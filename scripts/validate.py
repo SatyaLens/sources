@@ -47,7 +47,7 @@ def scan_tracked_files() -> list[str]:
         if not Path(folder).exists():
             continue
         for ext in ("*.yaml", "*.yml", "*.json"):
-            files.extend(Path(folder).glob(ext))
+            files.extend(Path(folder).rglob(ext))
     return [str(f) for f in sorted(files)]
 
 def main() -> int:
