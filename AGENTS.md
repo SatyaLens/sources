@@ -42,7 +42,7 @@ python scripts/validate.py grant_requests/my-project.yaml
 ### Dependencies
 
 ```bash
-pip install pyyaml jsonschema referencing
+pip install -r requirements.txt
 ```
 
 ## Workflow Rules & Assumptions

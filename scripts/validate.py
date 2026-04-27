@@ -16,11 +16,9 @@ SCHEMA_MAP = {
     "proofs": "#/components/schemas/AdmissionRequest",
 }
 
-
 def load_oapi(path: str) -> dict:
     with open(path) as f:
         return yaml.safe_load(f)
-
 
 def resolve_schema(spec: dict, ref: str) -> dict:
     assert ref.startswith("#/"), f"Invalid ref: {ref}"
@@ -30,7 +28,6 @@ def resolve_schema(spec: dict, ref: str) -> dict:
         current = current[part]
     return current
 
-
 def load_doc(path: str) -> dict:
     with open(path) as f:
         content = f.read()
@@ -39,12 +36,10 @@ def load_doc(path: str) -> dict:
     except yaml.YAMLError:
         return json.loads(content)
 
-
 def validate(data: dict, schema: dict, spec: dict) -> list[str]:
     registry = Registry().with_resource("oapi", Resource.from_contents(spec)) # type: ignore
     validator = Draft202012Validator(schema, registry=registry)
     return [f"{e.json_path}: {e.message}" for e in validator.iter_errors(data)]
-
 
 def scan_tracked_files() -> list[str]:
     files = []
@@ -54,7 +49,6 @@ def scan_tracked_files() -> list[str]:
         for ext in ("*.yaml", "*.yml", "*.json"):
             files.extend(Path(folder).glob(ext))
     return [str(f) for f in sorted(files)]
-
 
 def main() -> int:
     files = sys.argv[1:]
