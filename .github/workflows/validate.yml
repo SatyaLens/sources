@@ -1,0 +1,27 @@
+name: Validate Request Documents
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'grant_requests/**'
+      - 'admission_requests/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml jsonschema referencing
+
+      - name: Validate documents
+        run: python scripts/validate.py

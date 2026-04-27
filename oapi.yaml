@@ -1,0 +1,749 @@
+openapi: 3.0.0
+info:
+  title: Source Score Microservice
+  description: An application to rate sources based on the validity of their claims
+  version: 0.1.0
+
+servers:
+  - url: /
+    description: Current host
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /api/v1/sources:
+    get:
+      summary: Get all sources
+      description: Retrieves a list of all registered information sources
+      tags:
+      - sources
+      operationId: getSources
+      responses:
+        200:
+          description: List of sources retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Source'
+
+  /api/v1/sources/scores:
+    post:
+      summary: Update all source scores
+      description: Triggers asynchronous calculation of credibility scores for all sources based on their verified claims. Returns 409 if a calculation is already in progress.
+      tags:
+      - sources
+      operationId: updateAllScores
+      responses:
+        202:
+          description: Score update process initiated successfully
+        409:
+          description: Score calculation already in progress
+
+  /api/v1/source:
+    post:
+      summary: Create a new source
+      description: Registers a new information source in the system. The URI must be unique and use HTTPS.
+      tags:
+      - source
+      operationId: postSource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceInput'
+      responses:
+        201:
+          description: Source created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSourceResponse'
+        400:
+          description: Invalid input (missing required fields, invalid URI format, or tags contain spaces)
+        409:
+          description: Source with this URI already exists
+
+  /api/v1/source/{uriDigest}:
+    get:
+      summary: Get source by URI digest
+      description: Retrieves a specific source using its SHA-256 URI digest
+      tags:
+      - source
+      operationId: getSource
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the source URI
+        schema:
+          type: string
+      responses:
+        200:
+          description: Source retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Source'
+        404:
+          description: Source not found
+
+    patch:
+      summary: Update source fields
+      description: Partially updates a source. Only provided fields will be updated. Empty values are not allowed.
+      tags:
+        - source
+      operationId: patchSource
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the source URI
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourcePatchInput'
+      responses:
+        204:
+          description: Source updated successfully
+        400:
+          description: Invalid input (empty fields or tags contain spaces)
+        404:
+          description: Source not found
+
+    delete:
+      summary: Delete a source
+      description: Removes a source from the system
+      tags:
+      - source
+      operationId: deleteSource
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the source URI
+        schema:
+          type: string
+      responses:
+        204:
+          description: Source deleted successfully
+        404:
+          description: Source not found
+
+  /api/v1/claims:
+    get:
+      summary: Get all claims
+      description: Retrieves a list of all claims across all sources
+      tags:
+      - claims
+      operationId: getClaims
+      responses:
+        200:
+          description: List of claims retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Claim'
+
+  /api/v1/claims/verify:
+    post:
+      summary: Verify all claims
+      description: Triggers asynchronous verification of all claims based on their associated proofs. Claims with more supporting proofs are marked valid, those with more refuting proofs are marked invalid. Returns 409 if verification is already in progress.
+      tags:
+      - claims
+      operationId: verifyAllClaims
+      responses:
+        202:
+          description: Claim verification process initiated successfully
+        409:
+          description: Claim verification already in progress
+
+  /api/v1/claim:
+    post:
+      summary: Create a new claim
+      description: Registers a new claim associated with a source. The URI must be unique and use HTTPS.
+      tags:
+      - claim
+      operationId: postClaim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimInput'
+      responses:
+        201:
+          description: Claim created successfully
+        400:
+          description: Invalid input (missing required fields or invalid URI format)
+        404:
+          description: Source not found
+
+  /api/v1/claim/{uriDigest}:
+    get:
+      summary: Get claim by URI digest
+      description: Retrieves a specific claim using its SHA-256 URI digest
+      tags:
+      - claim
+      operationId: getClaim
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the claim URI
+        schema:
+          type: string
+      responses:
+        200:
+          description: Claim retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Claim'
+        404:
+          description: Claim not found
+
+    delete:
+      summary: Delete a claim
+      description: Removes a claim from the system
+      tags:
+      - claim
+      operationId: deleteClaim
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the claim URI
+        schema:
+          type: string
+      responses:
+        204:
+          description: Claim deleted successfully
+        404:
+          description: Claim not found
+
+    patch:
+      summary: Update claim fields
+      description: Partially updates a claim. Only provided fields (title and/or summary) will be updated. Empty values are not allowed.
+      tags:
+        - claim
+      operationId: patchClaim
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the claim URI
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimPatchInput'
+      responses:
+        204:
+          description: Claim updated successfully
+        400:
+          description: Invalid input (empty fields)
+        404:
+          description: Claim not found
+
+    post:
+      summary: Verify a single claim
+      description: Manually verifies a claim with a specified validity value (currently disabled)
+      tags:
+      - claim
+      operationId: verifyClaim
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the claim URI
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimVerification'
+      responses:
+        204:
+          description: Claim verified successfully
+        400:
+          description: Invalid input (missing validity field)
+        404:
+          description: Claim not found
+
+  /api/v1/proofs:
+    get:
+      summary: Get all proofs
+      description: Retrieves a list of all proofs across all claims
+      tags:
+      - proofs
+      operationId: getProofs
+      responses:
+        200:
+          description: List of proofs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Proof'
+
+  /api/v1/proof:
+    post:
+      summary: Create a new proof
+      description: Registers evidence that either supports or refutes a claim. The URI must be unique and use HTTPS.
+      tags:
+      - proof
+      operationId: postProof
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProofInput'
+      responses:
+        201:
+          description: Proof created successfully
+        400:
+          description: Invalid input (missing required fields, invalid URI format, or fields contain spaces)
+        404:
+          description: Claim not found
+
+  /api/v1/proof/{uriDigest}:
+    get:
+      summary: Get proof by URI digest
+      description: Retrieves a specific proof using its SHA-256 URI digest
+      tags:
+      - proof
+      operationId: getProof
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the proof URI
+        schema:
+          type: string
+      responses:
+        200:
+          description: Proof retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Proof'
+        404:
+          description: Proof not found
+
+    delete:
+      summary: Delete a proof
+      description: Removes a proof from the system
+      tags:
+      - proof
+      operationId: deleteProof
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the proof URI
+        schema:
+          type: string
+      responses:
+        204:
+          description: Proof deleted successfully
+        404:
+          description: Proof not found
+
+    patch:
+      summary: Update proof reviewer
+      description: Updates the reviewer identifier for a proof. Empty values and spaces are not allowed.
+      tags:
+        - proof
+      operationId: patchProof
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the proof URI
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProofPatchInput'
+      responses:
+        204:
+          description: Proof updated successfully
+        400:
+          description: Invalid input (empty field or contains spaces)
+        404:
+          description: Proof not found
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    SourceInput:
+      type: object
+      description: Input schema for creating a new source
+      required:
+      - name
+      - summary
+      - tags
+      - uri
+      properties:
+        name:
+          type: string
+          description: Display name of the information source
+          example: "New York Times"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: nonempty
+        summary:
+          type: string
+          description: Brief description of the source
+          example: "American daily newspaper based in New York City"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: nonempty
+        tags:
+          type: string
+          description: Comma-separated tags for categorization (no spaces allowed)
+          example: "news,media,journalism"
+          x-oapi-codegen-extra-tags:
+            validate: nonempty,nospace
+            binding: required
+        uri:
+          type: string
+          description: Unique HTTPS URL identifying the source
+          example: "https://www.nytimes.com"
+          x-oapi-codegen-extra-tags:
+            validate: httpsurl
+            binding: required
+
+    SourcePatchInput:
+      type: object
+      description: Input schema for partially updating a source
+      properties:
+        name:
+          type: string
+          nullable: true
+          description: Updated display name
+          example: "The New York Times"
+          x-oapi-codegen-extra-tags:
+            validate: omitnil,nonempty
+        summary:
+          type: string
+          nullable: true
+          description: Updated description
+          example: "Leading American newspaper"
+          x-oapi-codegen-extra-tags:
+            validate: omitnil,nonempty
+        tags:
+          type: string
+          nullable: true
+          description: Updated comma-separated tags (no spaces allowed)
+          example: "news,journalism,trusted"
+          x-oapi-codegen-extra-tags:
+            validate: omitnil,nospace,nonempty
+
+    Source:
+      type: object
+      description: Complete source entity with calculated credibility score
+      required:
+      - name
+      - score
+      - summary
+      - tags
+      - uri
+      - uriDigest
+      properties:
+        name:
+          type: string
+          description: Display name of the source
+          example: "New York Times"
+          x-oapi-codegen-extra-tags:
+            binding: required
+        score:
+          type: number
+          format: double
+          description: Credibility score (0.0 to 1.0) calculated as ratio of valid to total verified claims
+          example: 0.85
+          x-oapi-codegen-extra-tags:
+            binding: required
+        uriDigest:
+          type: string
+          description: SHA-256 hash of the URI, used as primary key
+          example: "8649a4126fb4fc9a750f432b729c8477398cf28ca241403b2cd36a6dc841f441"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            gorm: primaryKey
+        summary:
+          type: string
+          description: Brief description of the source
+          example: "American daily newspaper"
+          x-oapi-codegen-extra-tags:
+            binding: required
+        tags:
+          type: string
+          description: Comma-separated categorization tags
+          example: "news,media,journalism"
+          x-oapi-codegen-extra-tags:
+            binding: required
+        uri:
+          type: string
+          description: Unique HTTPS URL of the source
+          example: "https://www.nytimes.com"
+          x-oapi-codegen-extra-tags:
+            binding: required
+
+    CreateSourceResponse:
+      type: object
+      description: Response after successfully creating a source
+      required:
+      - uriDigest
+      properties:
+        uriDigest:
+          type: string
+          description: SHA-256 hash of the source URI
+          example: "8649a4126fb4fc9a750f432b729c8477398cf28ca241403b2cd36a6dc841f441"
+          x-oapi-codegen-extra-tags:
+            binding: required
+
+    ClaimInput:
+      type: object
+      description: Input schema for creating a new claim
+      required:
+      - sourceUriDigest
+      - summary
+      - title
+      - uri
+      properties:
+        sourceUriDigest:
+          type: string
+          description: SHA-256 hash of the parent source URI
+          example: "8649a4126fb4fc9a750f432b729c8477398cf28ca241403b2cd36a6dc841f441"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: nonempty
+        summary:
+          type: string
+          description: Detailed description of the claim
+          example: "The unemployment rate decreased by 2% in Q4 2024"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: nonempty
+        title:
+          type: string
+          description: Short title of the claim
+          example: "Unemployment Rate Decrease"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: nonempty
+        uri:
+          type: string
+          description: Unique HTTPS URL identifying the claim
+          example: "https://www.nytimes.com/2024/unemployment-report"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: httpsurl
+
+    Claim:
+      type: object
+      description: Complete claim entity with verification status
+      required:
+      - sourceUriDigest
+      - summary
+      - title
+      - uri
+      - uriDigest
+      - checked
+      - validity
+      properties:
+        sourceUriDigest:
+          type: string
+          description: SHA-256 hash of the parent source URI
+          example: "8649a4126fb4fc9a750f432b729c8477398cf28ca241403b2cd36a6dc841f441"
+          x-oapi-codegen-extra-tags:
+            binding: required
+        summary:
+          type: string
+          description: Detailed description of the claim
+          example: "The unemployment rate decreased by 2% in Q4 2024"
+          x-oapi-codegen-extra-tags:
+            binding: required
+        title:
+          type: string
+          description: Short title of the claim
+          example: "Unemployment Rate Decrease"
+          x-oapi-codegen-extra-tags:
+            binding: required
+        uri:
+          type: string
+          description: Unique HTTPS URL of the claim
+          example: "https://www.nytimes.com/2024/unemployment-report"
+          x-oapi-codegen-extra-tags:
+            binding: required
+        uriDigest:
+          type: string
+          description: SHA-256 hash of the URI, used as primary key
+          example: "369d9f3047c66c2e9b5e39693d9de3664b61a36a2d77cd0484fade042350d4a1"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            gorm: primaryKey
+        checked:
+          type: boolean
+          default: false
+          description: Indicates whether the claim has been verified
+          example: true
+          x-oapi-codegen-extra-tags:
+            binding: required
+        validity:
+          type: boolean
+          default: false
+          description: Indicates whether the claim is valid (true) or invalid (false) based on proof analysis
+          example: true
+          x-oapi-codegen-extra-tags:
+            binding: required
+
+    ClaimPatchInput:
+      type: object
+      description: Input schema for partially updating a claim
+      properties:
+        summary:
+          type: string
+          nullable: true
+          description: Updated detailed description
+          example: "The unemployment rate decreased by 2.1% in Q4 2024"
+          x-oapi-codegen-extra-tags:
+            validate: omitnil,nonempty
+        title:
+          type: string
+          nullable: true
+          description: Updated short title
+          example: "Q4 2024 Unemployment Decrease"
+          x-oapi-codegen-extra-tags:
+            validate: omitnil,nonempty
+
+    ProofInput:
+      type: object
+      description: Input schema for creating a new proof
+      required:
+      - claimUriDigest
+      - reviewedBy
+      - uri
+      properties:
+        claimUriDigest:
+          type: string
+          description: SHA-256 hash of the claim URI being evaluated (no spaces allowed)
+          example: "369d9f3047c66c2e9b5e39693d9de3664b61a36a2d77cd0484fade042350d4a1"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: nonempty,nospace
+        supportsClaim:
+          type: boolean
+          description: Whether this proof supports (true) or refutes (false) the claim
+          example: true
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: nonempty
+        reviewedBy:
+          type: string
+          description: Identifier of the reviewer who evaluated this proof (no spaces allowed)
+          example: "fact-checker-001"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: nonempty,nospace
+        uri:
+          type: string
+          description: Unique HTTPS URL of the proof source
+          example: "https://bls.gov/unemployment-data-q4-2024"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: httpsurl
+
+    Proof:
+      type: object
+      description: Complete proof entity
+      required:
+      - claimUriDigest
+      - supportsClaim
+      - reviewedBy
+      - uri
+      - uriDigest
+      properties:
+        claimUriDigest:
+          type: string
+          description: SHA-256 hash of the claim URI
+          example: "369d9f3047c66c2e9b5e39693d9de3664b61a36a2d77cd0484fade042350d4a1"
+          x-oapi-codegen-extra-tags:
+            binding: required
+        supportsClaim:
+          type: boolean
+          description: Whether this proof supports (true) or refutes (false) the claim
+          example: true
+          x-oapi-codegen-extra-tags:
+            binding: required
+        reviewedBy:
+          type: string
+          description: Identifier of the reviewer
+          example: "fact-checker-001"
+          x-oapi-codegen-extra-tags:
+            binding: required
+        uri:
+          type: string
+          description: Unique HTTPS URL of the proof source
+          example: "https://bls.gov/unemployment-data-q4-2024"
+          x-oapi-codegen-extra-tags:
+            binding: required
+        uriDigest:
+          type: string
+          description: SHA-256 hash of the URI, used as primary key
+          example: "6f2479b5249b1c27c4935da5594bc72bb0b9e59e704aea9af50780bc6178c357"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            gorm: primaryKey
+
+    ProofPatchInput:
+      type: object
+      description: Input schema for updating proof reviewer
+      required:
+      - reviewedBy
+      properties:
+        reviewedBy:
+          type: string
+          description: Updated reviewer identifier (no spaces allowed)
+          example: "fact-checker-002"
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: nonempty,nospace
+
+    ClaimVerification:
+      type: object
+      description: Input schema for manually verifying a claim
+      properties:
+        validity:
+          type: boolean
+          description: Whether the claim is valid (true) or invalid (false)
+          example: true
+          x-oapi-codegen-extra-tags:
+            binding: required
+            validate: nonempty
