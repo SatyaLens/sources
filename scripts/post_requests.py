@@ -46,19 +46,23 @@ def extract_post_paths(spec: dict) -> dict[str, str]:
 
     return paths
 
-def post(url: str, data: dict, api_key: str) -> tuple[int, str]:
+def post(url: str, data: dict, api_key: str, timeout: float = 90.0) -> tuple[int, str]:
     payload = json.dumps(data).encode()
     headers = {
         "Content-Type": "application/json",
-        "X-API-Key": f"{api_key}",
+        "X-API-Key": api_key,
     }
 
     req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.status, resp.read().decode()
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode()
+    except urllib.error.URLError as e:
+        # Covers timeouts, DNS failures, refused connections, etc.
+        reason = str(e.reason)
+        return 0, reason
 
 
 def main() -> int:
