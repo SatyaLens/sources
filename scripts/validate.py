@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Validate request documents against OpenAPI schemas."""
 
-import json
 import sys
 import os
 from pathlib import Path
+import traceback
+from referencing.jsonschema import DRAFT202012
+from referencing import Registry, Resource
 
 # Shared utilities (try package import first, fallback to local module)
 try:
@@ -32,7 +34,10 @@ def resolve_schema(spec: dict, ref: str) -> dict:
     return current
 
 def validate(data: dict, schema: dict, spec: dict) -> list[str]:
-    registry = Registry().with_resource("oapi", Resource.from_contents(spec)) # type: ignore
+    registry = Registry().with_resource(
+        "oapi",
+        Resource.from_contents(spec, DRAFT202012)  # explicit spec
+    )
     validator = Draft202012Validator(schema, registry=registry)
     return [f"{e.json_path}: {e.message}" for e in validator.iter_errors(data)]
 
@@ -45,20 +50,37 @@ def scan_tracked_files() -> list[str]:
             files.extend(Path(folder).rglob(ext))
     return [str(f) for f in sorted(files)]
 
+
+def _info(msg: str, *args) -> None:
+    print("INFO:", msg % args if args else msg)
+
+
+def _error(msg: str, *args) -> None:
+    print("ERROR:", msg % args if args else msg, file=sys.stderr)
+
+
+def _exception(msg: str, *args) -> None:
+    print("ERROR:", msg % args if args else msg, file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
+
 def main() -> int:
     files = sys.argv[1:]
+
     if not files:
-        print("Validating all files...")
+        _info("Validating new docs...")
         files = scan_tracked_files()
-        return 0
 
     spec = load_oapi("oapi.yaml")
     failed = False
+
+    _info("Validation run: %d file(s) to check", len(files))
 
     for f in files:
         f = f.strip()
         if not f:
             continue
+
+        _info("Validating %s", f)
 
         parts = Path(f).parts
         if not parts or parts[0] not in SCHEMA_MAP:
@@ -69,25 +91,25 @@ def main() -> int:
         schema = resolve_schema(spec, schema_ref)
 
         if not Path(f).exists():
-            print(f"{f}: File not found")
+            _error("%s: File not found", f)
             failed = True
             continue
 
         try:
             data = load_doc(f)
         except Exception as e:
-            print(f"{f}: Failed to parse document: {e}")
+            _exception("%s: Failed to parse document: %s", f, e)
             failed = True
             continue
 
         errors = validate(data, schema, spec)
         if errors:
-            print(f"{f}:")
+            _error("%s: %d validation error(s)", f, len(errors))
             for e in errors:
-                print(f"   - {e}")
+                _error("   - %s", e)
             failed = True
         else:
-            print(f"{f}")
+            _info("%s: OK", f)
 
     return 1 if failed else 0
 

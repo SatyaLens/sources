@@ -12,6 +12,7 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+import traceback
 
 # Shared utilities (try package import first, fallback to local module)
 try:
@@ -61,58 +62,100 @@ def post(url: str, data: dict, api_key: str) -> tuple[int, str]:
 
 
 def main() -> int:
+    def _info(msg: str, *args) -> None:
+        print("INFO:", msg % args if args else msg)
+
+    def _error(msg: str, *args) -> None:
+        print("ERROR:", msg % args if args else msg, file=sys.stderr)
+
+    def _exception(msg: str, *args) -> None:
+        print("ERROR:", msg % args if args else msg, file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+
     base_url = os.environ.get("API_BASE_URL", "").rstrip("/")
     api_key = os.environ.get("API_KEY", "")
 
     if not base_url:
-        print("API_BASE_URL environment variable is not set", file=sys.stderr)
+        _error("API_BASE_URL environment variable is not set")
         return 1
     if not api_key:
-        print("API_KEY environment variable is not set", file=sys.stderr)
+        _error("API_KEY environment variable is not set")
         return 1
 
     files = [f for f in os.environ.get("ADDED_FILES", "").splitlines() if f.strip()]
     if not files:
-        print("No added files to process.")
+        _info("No added files to process.")
         return 0
+
+    _info("POST run: %d file(s) to process", len(files))
 
     spec = load_oapi("oapi.yaml")
     schema_paths = extract_post_paths(spec)
 
     failed = False
+    allowed_exts = {".yaml", ".yml", ".json"}
     for f in files:
         f = f.strip()
-        parts = Path(f).parts
-        if not parts or parts[0] not in SCHEMA_MAP:
+        if not f:
+            continue
+
+        # normalize path parts (skip '.' and '..')
+        p = Path(f)
+        parts = [part for part in p.parts if part not in (".", "..")]
+        if not parts:
             continue
 
         folder = parts[0]
+        if folder not in SCHEMA_MAP:
+            continue
+
+        norm_path = Path(*parts)
+        if norm_path.suffix.lower() not in allowed_exts:
+            _info("Skipping non-document file: %s", str(norm_path))
+            continue
+
         schema_name = SCHEMA_MAP[folder]
         path = schema_paths.get(schema_name)
         if not path:
-            print(f"No POST path found for schema {schema_name}, skipping {f}")
+            _error("No POST path found for schema %s, skipping %s", schema_name, str(norm_path))
             failed = True
             continue
 
         url = f"{base_url}{path}"
+        # warn if BASE_URL likely duplicates path prefix (common misconfiguration)
+        path_segments = [seg for seg in path.split("/") if seg]
+        if path_segments and base_url.rstrip("/").endswith("/" + path_segments[0]):
+            _info("Warning: BASE_URL '%s' may duplicate path segment '%s' when combined with '%s'", base_url, path_segments[0], path)
 
-        if not Path(f).exists():
-            print(f"{f}: File not found")
+        if not norm_path.exists():
+            _error("%s: File not found", str(norm_path))
             failed = True
             continue
 
         try:
-            data = load_doc(f)
+            data = load_doc(str(norm_path))
         except Exception as e:
-            print(f"{f}: Failed to parse: {e}")
+            _exception("%s: Failed to parse: %s", str(norm_path), e)
             failed = True
             continue
 
-        status, body = post(url, data, api_key)
+        if not isinstance(data, dict):
+            _error("%s: Parsed document is not a JSON object; skipping", str(norm_path))
+            failed = True
+            continue
+
+        _info("Posting %s -> %s", str(norm_path), url)
+        try:
+            status, body = post(url, data, api_key)
+        except Exception as e:
+            _exception("%s: Request failed: %s", str(norm_path), e)
+            failed = True
+            continue
+
         if 200 <= status < 300:
-            print(f"{f} → {url} ({status})")
+            _info("%s → %s (%d)", str(norm_path), url, status)
         else:
-            print(f"{f} → {url} ({status}): {body[:200]}")
+            _error("%s → %s (%d): %s", str(norm_path), url, status, body[:200])
             failed = True
 
     return 1 if failed else 0
