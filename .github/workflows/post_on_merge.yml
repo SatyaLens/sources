@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  API_BASE_URL: ${{ vars.API_BASE_URL }}
+  API_KEY: ${{ secrets.API_KEY }}
+
 jobs:
   post:
     runs-on: ubuntu-latest
