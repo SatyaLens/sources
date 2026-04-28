@@ -1,12 +1,14 @@
 name: Validate Request Documents
 
 on:
+  workflow_run:
   pull_request:
     branches:
       - main
     paths:
-      - 'grant_requests/**'
-      - 'admission_requests/**'
+      - 'sources/**'
+      - 'claims/**'
+      - 'proofs/**'
 
 jobs:
   validate:
