@@ -16,7 +16,7 @@ from pathlib import Path
 # Shared utilities (try package import first, fallback to local module)
 try:
     from scripts.common import load_oapi, load_doc
-except Exception:
+except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
     from common import load_oapi, load_doc
 
