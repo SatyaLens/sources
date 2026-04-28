@@ -3,22 +3,25 @@
 
 import json
 import sys
+import os
 from pathlib import Path
 
-import yaml
+# Shared utilities (try package import first, fallback to local module)
+try:
+    from scripts.common import load_oapi, load_doc
+except Exception:
+    sys.path.insert(0, os.path.dirname(__file__))
+    from common import load_oapi, load_doc
+
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
-# folder -> schema $ref in openapi.yaml
+# folder -> schema $ref in oapi.yaml
 SCHEMA_MAP = {
     "sources": "#/components/schemas/SourceInput",
-    "claims": "#/components/schemas/AdmissionRequest",
-    "proofs": "#/components/schemas/AdmissionRequest",
+    "claims": "#/components/schemas/ClaimInput",
+    "proofs": "#/components/schemas/ProofInput",
 }
-
-def load_oapi(path: str) -> dict:
-    with open(path) as f:
-        return yaml.safe_load(f)
 
 def resolve_schema(spec: dict, ref: str) -> dict:
     assert ref.startswith("#/"), f"Invalid ref: {ref}"
@@ -27,14 +30,6 @@ def resolve_schema(spec: dict, ref: str) -> dict:
     for part in parts:
         current = current[part]
     return current
-
-def load_doc(path: str) -> dict:
-    with open(path) as f:
-        content = f.read()
-    try:
-        return yaml.safe_load(content)
-    except yaml.YAMLError:
-        return json.loads(content)
 
 def validate(data: dict, schema: dict, spec: dict) -> list[str]:
     registry = Registry().with_resource("oapi", Resource.from_contents(spec)) # type: ignore
