@@ -137,6 +137,30 @@ paths:
         404:
           description: Source not found
 
+  /api/v1/source/{uriDigest}/claims:
+    get:
+      summary: Get all the claims made by a source
+      description: Retrieves a list of all the claims made by a given source
+      tags:
+      - claims
+      operationId: getClaimsBySourceDigest
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the source URI
+        schema:
+          type: string
+      responses:
+        200:
+          description: List of claims retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Claim'
+
   /api/v1/claims:
     get:
       summary: Get all claims
@@ -284,6 +308,30 @@ paths:
           description: Invalid input (missing validity field)
         404:
           description: Claim not found
+
+  /api/v1/claim/{uriDigest}/proofs:
+    get:
+      summary: Get all the proofs provided for a claim
+      description: Retrieves a list of all the proofs stored for a given claim
+      tags:
+      - proofs
+      operationId: getProofsByClaimDigest
+      parameters:
+      - in: path
+        name: uriDigest
+        required: true
+        description: SHA-256 hash of the claim URI
+        schema:
+          type: string
+      responses:
+        200:
+          description: List of proofs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Proof'
 
   /api/v1/proofs:
     get:
