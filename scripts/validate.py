@@ -15,8 +15,8 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
     from common import load_oapi, load_doc
 
+# Use jsonschema's Draft202012Validator for validation
 from jsonschema import Draft202012Validator
-from referencing import Registry, Resource
 
 # folder -> schema $ref in oapi.yaml
 SCHEMA_MAP = {
@@ -34,12 +34,78 @@ def resolve_schema(spec: dict, ref: str) -> dict:
     return current
 
 def validate(data: dict, schema: dict, spec: dict) -> list[str]:
-    registry = Registry().with_resource(
-        "oapi",
-        Resource.from_contents(spec, DRAFT202012)  # explicit spec
-    )
-    validator = Draft202012Validator(schema, registry=registry)
-    return [f"{e.json_path}: {e.message}" for e in validator.iter_errors(data)]
+    # Use jsonschema validator directly. The referencing-based registry
+    # approach was causing incompatibilities in some environments, so
+    # stick to the standard validator here and produce readable paths.
+    validator = Draft202012Validator(schema)
+    errors: list[str] = []
+    for e in validator.iter_errors(data):
+        # Build a JSON-path-like representation from the error path
+        if hasattr(e, 'path') and e.path:
+            path = '/'.join(str(p) for p in e.path)
+        else:
+            path = '<root>'
+        errors.append(f"{path}: {e.message}")
+    return errors
+
+
+def _parse_validate_rules(s: str) -> list[str]:
+    if not s:
+        return []
+    if isinstance(s, str):
+        return [p.strip() for p in s.split(',') if p.strip()]
+    if isinstance(s, (list, tuple)):
+        return list(s)
+    return []
+
+
+def run_extra_validations(data: dict, schema: dict) -> list[str]:
+    """Run x-oapi-codegen-extra-tags validators declared in the schema.
+
+    Supported validators: nonempty, nospace, httpsurl
+    """
+    errors: list[str] = []
+    if not isinstance(data, dict):
+        return errors
+
+    props = schema.get('properties') or {}
+    for name, prop_schema in props.items():
+        extra = prop_schema.get('x-oapi-codegen-extra-tags') or {}
+        validate_spec = extra.get('validate') if isinstance(extra, dict) else None
+        rules = _parse_validate_rules(validate_spec) # type: ignore
+        if not rules:
+            continue
+
+        # Skip missing fields; JSON Schema required/nullable rules will cover requiredness
+        if name not in data:
+            continue
+
+        val = data.get(name)
+
+        for rule in rules:
+            if rule == 'nonempty':
+                if val is None:
+                    errors.append(f"{name}: must not be empty")
+                elif isinstance(val, str) and len(val.strip()) == 0:
+                    errors.append(f"{name}: must not be empty")
+                elif isinstance(val, (list, dict)) and len(val) == 0:
+                    errors.append(f"{name}: must not be empty")
+
+            elif rule == 'nospace':
+                if val is None:
+                    continue
+                if not isinstance(val, str):
+                    errors.append(f"{name}: nospace rule applies to string values")
+                elif ' ' in val:
+                    errors.append(f"{name}: must not contain spaces")
+
+            elif rule == 'httpsurl':
+                if not isinstance(val, str) or not val.startswith('https://'):
+                    errors.append(f"{name}: must be an https URL")
+
+            # Unknown rules are ignored for now
+
+    return errors
 
 def scan_tracked_files() -> list[str]:
     files = []
@@ -103,6 +169,11 @@ def main() -> int:
             continue
 
         errors = validate(data, schema, spec)
+        # Run extra validators defined via x-oapi-codegen-extra-tags
+        extra_errors = run_extra_validations(data, schema)
+        if extra_errors:
+            errors.extend(extra_errors)
+
         if errors:
             _error("%s: %d validation error(s)", f, len(errors))
             for e in errors:
