@@ -20,6 +20,7 @@ fi
 
 # Temp file for the page markdown
 TMP_MD="$(mktemp)"
+echo "storing raw md doc at: $TMP_MD"
 trap 'rm -f "$TMP_MD"' EXIT
 
 # Scrape page via Firecrawl Python helper

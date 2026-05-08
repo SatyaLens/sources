@@ -62,6 +62,7 @@ def post_openrouter(api_key: str, payload: dict) -> Tuple[int, str]:
 
     return status, body
 
+# TODO: add retry mechanism when hitting openrouter endpoints
 def req_openrouter(payload: dict, api_key: str) -> str:
     status, body = post_openrouter(api_key, payload)
 
@@ -82,6 +83,7 @@ def req_openrouter(payload: dict, api_key: str) -> str:
             print(f"Failed to access key [choices][0][message][content]: {e}", file=sys.stderr)
             sys.exit(1)
     else:
+        print(f"Openrouter response status: {status}", file=sys.stderr)
         return ""
 
 def process_raw_doc(md_processing_skill: str, md_doc: str, api_key: str) -> str:
@@ -133,6 +135,63 @@ def process_raw_srcs(raw_source_list: str, api_key: str) -> str:
         sys.exit(1)
     return source_list
 
+def get_latest_source() -> str:
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    sources_dir = os.path.join(base_dir, "sources")
+
+    try:
+        entries = [os.path.join(sources_dir, fn) for fn in os.listdir(sources_dir)]
+        files = [p for p in entries if os.path.isfile(p)]
+    except Exception as e:
+        print(f"Error listing sources directory {sources_dir}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if not files:
+        print(f"No files found in {sources_dir}", file=sys.stderr)
+        sys.exit(1)
+
+    latest = max(files, key=lambda p: os.path.getmtime(p))
+
+    try:
+        with open(latest, 'r', encoding='utf-8') as f:
+            latest_content = f.read()
+    except Exception as e:
+        print(f"Error reading latest file {latest}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    return latest_content
+
+def get_source_docs(sample: str, sources: str, api_key: str) -> str:
+    # TODO: generate yaml doc for once source at a time, however this consumes more requests and increases odds of failed requests
+    content = (f"Extract schema from the following yaml document and store it as source_schema:\n\n"
+        f"{sample}\n\n"
+        f"Following is a list of urls of media outlets separated by new lines\n\n"
+        f"{sources}\n\n"
+        "Use web search to fetch information about these media outlets and create yaml docs for each of them following the source_schema schema. Do not output anything except for the yaml documents for these medial outlets."
+    )
+
+    for model in FREE_MODELS_DOC:
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": content
+                },
+            ],
+            "tools": [
+                {"type": "openrouter:web_search"}
+            ]
+        }
+
+        source_docs = req_openrouter(payload, api_key)
+        if source_docs != "":
+            break
+    if source_docs == "":
+        print("Error: All models failed.", file=sys.stderr)
+        sys.exit(1)
+    return source_docs
+
 def main() -> str:
     if len(sys.argv) < 2:
         print("Usage: openrouter.py TMP_MD", file=sys.stderr)
@@ -164,12 +223,11 @@ def main() -> str:
     # openrouter call to get a clean formatted list of source urls
     source_list = process_raw_srcs(raw_source_list, api_key)
 
-    # openrouter call for each source
-    # input: SourceInput schema from oap.yaml + latest added source from sources folder
-    # output: properly formatted source doument
-    # print the document
+    # load the most recently added source
+    latest_source = get_latest_source()
 
-    return source_list
+    # TODO: remove already ingested sources from source_list
+    return get_source_docs(latest_source, source_list, api_key)
 
 
 if __name__ == "__main__":
