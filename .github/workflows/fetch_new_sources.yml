@@ -1,0 +1,74 @@
+name: Fetch and add new sources
+
+on:
+  workflow_dispatch:
+  schedule:
+    # weekly, Sunday 00:00 UTC
+    - cron: '0 0 * * 0'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fetch-and-add:
+    env:
+      BRANCH: src-auto-add-${{ github.run_id }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create branch from main
+        run: |
+          git fetch origin main
+          git checkout -b "$BRANCH" origin/main
+
+      - name: Run source scraper (with retries)
+        run: |
+          set -e
+          attempt=1
+          max=3
+          until [ $attempt -gt $max ]; do
+            echo "Attempt $attempt..."
+            if bash scripts/source_scraper.sh; then
+              echo "Script succeeded"
+              break
+            fi
+            attempt=$((attempt+1))
+            if [ $attempt -le $max ]; then
+              echo "Retrying in 120 seconds..."
+              sleep 120
+            fi
+          done
+          if [ $attempt -gt $max ]; then
+            echo "Script failed after $max attempts"
+            exit 1
+          fi
+
+      - name: Commit and push changes
+        id: commit
+        run: |
+          git add --all
+          if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes to commit"
+          else
+            git commit -m "feat(sources): adds new most popular sources"
+            git push origin "$BRANCH"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          gh pr create \
+            --title "Auto PR: Scheduled addition of new sources" \
+            --body "Adds most popular news source in the last week for ingestion" \
+            --base main

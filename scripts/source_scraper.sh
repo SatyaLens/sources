@@ -3,11 +3,6 @@ set -euo pipefail
 
 URL="$TOP_SOURCES_LIST"
 
-if [[ -z "$URL" ]]; then
-  echo "TOP_SOURCES_LIST env var not set" >&2
-  exit 1
-fi
-
 if [[ -z "${FIRECRAWL_API_KEY:-}" ]]; then
   echo "Error: FIRECRAWL_API_KEY is not set." >&2
   exit 1
