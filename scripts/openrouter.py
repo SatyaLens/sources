@@ -105,6 +105,34 @@ def process_raw_doc(md_processing_skill: str, md_doc: str, api_key: str) -> str:
         sys.exit(1)
     return raw_source_list
 
+def process_raw_srcs(raw_source_list: str, api_key: str) -> str:
+    content = (f"Here is a raw list of URLs of news outlets with each line containing one or more unformatted URLs:\n\n"
+        f"{raw_source_list}\n\n"
+        f"Use web search to access these URLs and discard those that are invalid. Do not scrape the web page, only check if the URL is valid\n"
+        "Based on successful web searches, return a list of corresponding properly formatted URLs witout any extra test. Keep only one URL per line."
+    )
+    for model in FREE_MODELS_DOC:
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": content
+                },
+            ],
+            "tools": [
+                {"type": "openrouter:web_search"}
+            ]
+        }
+
+        source_list = req_openrouter(payload, api_key)
+        if source_list != "":
+            break
+    if source_list == "":
+        print("Error: All models failed.", file=sys.stderr)
+        sys.exit(1)
+    return source_list
+
 def main() -> str:
     if len(sys.argv) < 2:
         print("Usage: openrouter.py TMP_MD", file=sys.stderr)
@@ -132,16 +160,16 @@ def main() -> str:
         sys.exit(1)
 
     raw_source_list = process_raw_doc(md_processing_skill, md_doc, api_key)
-    
 
     # openrouter call to get a clean formatted list of source urls
+    source_list = process_raw_srcs(raw_source_list, api_key)
 
     # openrouter call for each source
     # input: SourceInput schema from oap.yaml + latest added source from sources folder
     # output: properly formatted source doument
     # print the document
 
-    return raw_source_list
+    return source_list
 
 
 if __name__ == "__main__":
