@@ -13,6 +13,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+import re
+import yaml
 from typing import Tuple
 
 try:
@@ -161,13 +163,52 @@ def get_latest_source() -> str:
 
     return latest_content
 
+def remove_ingested_sources(source_docs: list[str]) -> list[str]:
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    sources_dir = os.path.join(base_dir, "sources")
+
+    # Load existing source files
+    existing = []
+    try:
+        for fn in os.listdir(sources_dir):
+            if not (fn.endswith('.yaml') or fn.endswith('.yml')):
+                continue
+            path = os.path.join(sources_dir, fn)
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    doc = yaml.safe_load(f)
+                if isinstance(doc, dict):
+                    existing.append(doc)
+            except Exception as e:
+                print(f"Warning: failed to read/parse {path}: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"Error listing sources directory {sources_dir}: {e}", file=sys.stderr)
+        return source_docs
+
+    cleaned: list[str] = []
+    for doc_str in source_docs:
+        try:
+            doc = yaml.safe_load(doc_str)
+        except Exception as e:
+            print(f"Warning: failed to parse source_doc; not adding it to the source list it. Error: {e}", file=sys.stderr)
+            continue
+        duplicate = False
+        for src in existing:
+            if doc.get('name') == src.get('name') or doc.get('uri') == src.get('uri'):
+                duplicate = True
+                break
+        if not duplicate:
+            cleaned.append(doc_str)
+
+    return cleaned
+
 def get_source_docs(sample: str, sources: str, api_key: str) -> str:
     # TODO: generate yaml doc for once source at a time, however this consumes more requests and increases odds of failed requests
     content = (f"Extract schema from the following yaml document and store it as source_schema:\n\n"
         f"{sample}\n\n"
         f"Following is a list of urls of media outlets separated by new lines\n\n"
         f"{sources}\n\n"
-        "Use web search to fetch information about these media outlets and create yaml docs for each of them following the source_schema schema. Do not output anything except for the yaml documents for these medial outlets."
+        "Use web search to fetch information about these media outlets and create yaml docs for each of them following the source_schema schema. Do not output anything except for the yaml documents for these medial outlets separated by ---."
     )
 
     for model in FREE_MODELS_DOC:
@@ -192,7 +233,7 @@ def get_source_docs(sample: str, sources: str, api_key: str) -> str:
         sys.exit(1)
     return source_docs
 
-def main() -> str:
+def main():
     if len(sys.argv) < 2:
         print("Usage: openrouter.py TMP_MD", file=sys.stderr)
         sys.exit(1)
@@ -226,9 +267,41 @@ def main() -> str:
     # load the most recently added source
     latest_source = get_latest_source()
 
-    # TODO: remove already ingested sources from source_list
-    return get_source_docs(latest_source, source_list, api_key)
+    source_docs = get_source_docs(latest_source, source_list, api_key).split("---")
+    source_docs = list(filter(str.strip, source_docs))
 
+    # remove sources that are already in the `sources` directory
+    unique_src_docs = remove_ingested_sources(source_docs)
+
+    # Write each unique source YAML doc into the `sources/` folder.
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    sources_dir = os.path.join(base_dir, "sources")
+
+    for doc_str in unique_src_docs:
+        try:
+            parsed = yaml.safe_load(doc_str)
+        except Exception as e:
+            print(f"Warning: failed to parse src_doc : {doc_str}: {e}", file=sys.stderr)
+            continue
+
+        filename = parsed.get('name')
+
+        # sanitize name to use as filename
+        filename = re.sub(r"[^A-Za-z0-9._-]+", "-", filename.strip())
+
+        filename = filename + ".yaml"
+        path = os.path.join(sources_dir, filename)
+
+        # avoid overwriting existing files
+        if os.path.exists(path):
+            print(f"Warning: source file with name : {filename} already exists", file=sys.stderr)
+            continue
+
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(doc_str.strip() + "\n")
+        except Exception as e:
+            print(f"Error writing {path}: {e}", file=sys.stderr)
 
 if __name__ == "__main__":
     raise SystemExit(main())
