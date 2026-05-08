@@ -33,7 +33,7 @@ FREE_MODELS_DOC = [
 
 
 def fetch_text(url: str) -> str:
-    with urlopen(url) as r:
+    with urlopen(url, timeout=60) as r:
         return r.read().decode("utf-8")
 
 def fetch_content(path: str) -> str:
@@ -51,16 +51,14 @@ def post_openrouter(api_key: str, payload: dict) -> Tuple[int, str]:
         },
     )
 
+    status = -1
     try:
-        with urlopen(req) as r:
+        with urlopen(req, timeout=60) as r:
             status = r.getcode()
             body = r.read().decode("utf-8")
-    except HTTPError as e:
-        status = e.code
-        try:
-            body = e.read().decode("utf-8")
-        except Exception:
-            body = ""
+    except Exception as e:
+        print(f"Error making request to OpenRouter API: {e}", file=sys.stderr)
+        body = ""
 
     return status, body
 
@@ -192,6 +190,9 @@ def remove_ingested_sources(source_docs: list[str]) -> list[str]:
         except Exception as e:
             print(f"Warning: failed to parse source_doc; not adding it to the source list it. Error: {e}", file=sys.stderr)
             continue
+        if doc == None:
+            print(f"Warning: skipping the following yaml string as it failed to load: {doc_str}", file=sys.stderr)
+            continue
         duplicate = False
         for src in existing:
             if doc.get('name') == src.get('name') or doc.get('uri') == src.get('uri'):
@@ -285,6 +286,9 @@ def main():
             continue
 
         filename = parsed.get('name')
+        if filename == None or filename.strip() == '':
+            print(f"Warning: invalid source name or failed to extract name field from : {doc_str}", file=sys.stderr)
+            continue
 
         # sanitize name to use as filename
         filename = re.sub(r"[^A-Za-z0-9._-]+", "-", filename.strip())

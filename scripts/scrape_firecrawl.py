@@ -20,7 +20,7 @@ def main():
     fc = Firecrawl(api_key=api_key)
 
     # Scrape page as markdown
-    # Firecrawl's Python SDK returns a dict with a "markdown" field when formats includes "markdown".[web:992][web:995]
+    # Firecrawl's Python SDK returns an object with a "markdown" attribute when formats includes "markdown"
     try:
         doc = fc.scrape(url, formats=["markdown"])
     except Exception as e:

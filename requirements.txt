@@ -1,4 +1,4 @@
 pyyaml
 jsonschema
 referencing
-firecrawl
+firecrawl-py
