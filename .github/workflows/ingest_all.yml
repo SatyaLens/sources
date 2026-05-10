@@ -1,0 +1,57 @@
+name: Ingest all docs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  post-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Set ADDED_FILES variable
+        run: |
+          sources_files=$(find sources -type f 2>/dev/null | sort)
+          if [ -z "$sources_files" ]; then
+            echo "No sources files found"
+            exit 0
+          fi
+          
+          ADDED_FILES="$sources_files"
+          echo "Sources files added to ADDED_FILES"
+          
+          claims_files=$(find claims -type f 2>/dev/null | sort)
+          if [ -z "$claims_files" ]; then
+            echo "No claims files found, skipping proofs"
+            echo "ADDED_FILES<<EOF" >> "$GITHUB_ENV"
+            echo "$ADDED_FILES" >> "$GITHUB_ENV"
+            echo "EOF" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          
+          ADDED_FILES="$ADDED_FILES"$'\n'"$claims_files"
+          echo "Claims files added to ADDED_FILES"
+          
+          proofs_files=$(find proofs -type f 2>/dev/null | sort)
+          if [ -n "$proofs_files" ]; then
+            ADDED_FILES="$ADDED_FILES"$'\n'"$proofs_files"
+            echo "Proofs files added to ADDED_FILES"
+          else
+            echo "No proofs files found"
+          fi
+          
+          echo "ADDED_FILES<<EOF" >> "$GITHUB_ENV"
+          echo "$ADDED_FILES" >> "$GITHUB_ENV"
+          echo "EOF" >> "$GITHUB_ENV"
+      - name: POST new documents
+        if: env.ADDED_FILES != ''
+        run: python scripts/post_requests.py
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
