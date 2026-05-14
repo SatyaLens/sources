@@ -26,7 +26,7 @@ FREE_MODELS_DOC = [
 ]
 
 def fetch_web_text(url: str) -> str:
-    with urlopen(url, timeout=60) as r:
+    with urlopen(url, timeout=10) as r:
         return r.read().decode("utf-8")
 
 def get_sources(base_url: str, api_key: str):
@@ -91,7 +91,7 @@ def filter_claims(base_url: str, api_key: str, falsifiable_claim_skill: str, cla
         "\nOut of these 10 articles, only return the 2 article that best fit the falsifiable claim criterion."
         "Prefer claims that have been made by the news source directly"
         "Keep the json structure of the claims the same as the input. Do not add or remove any field."
-        "Only output the plain json array string that I can directly load into a Python dict."
+        "Only output the plain json array string that I can safely unmarshal."
         "Do not format the string. Do not output anything else."
     )
 
@@ -115,11 +115,16 @@ def filter_claims(base_url: str, api_key: str, falsifiable_claim_skill: str, cla
         if filtered_claims != "":
             break
 
-    if filtered_claims == "":
+    if filtered_claims == None or filtered_claims == "":
         print("Error: All models failed.", file=sys.stderr)
         sys.exit(1)
     
-    # models often return the json string wrapped in a code block
+    # models often return the json string wrapped in a code block or with incompatible values
+    # Replace all Python boolean and None values
+    filtered_claims = re.sub(r':\s*None\b', ': null', filtered_claims)
+    filtered_claims = re.sub(r':\s*False\b', ': false', filtered_claims)
+    filtered_claims = re.sub(r':\s*True\b', ': true', filtered_claims)
+
     match = re.search(r'```(?:json)?\s*(.*?)\s*```', filtered_claims, re.DOTALL)
     if match:
         return json.loads(match.group(1))
@@ -142,17 +147,6 @@ def get_claims(base_url: str, api_key: str, src_domain_url: str):
         print(f"Error: Received status code {response.status_code}")
         exit(1)
     return response.json()["results"]
-
-    # filtered_claims = []
-    # for claim in claims:
-    #     filtered_claims.append({
-    #         "uri": claim["claim"],
-    #         "claimDate": claim["claimDate"],
-    #         "claimReviewDate": claim["claimReviewDate"],
-    #         "claimReviewRating": claim["claimReviewRating"],
-    #         "claimReviewUrl": claim["claimReviewUrl"],
-    #         "claimReviewPublisher": claim["claimReviewPublisher"],
-    #     })
 
 def update_claim_fields(srcDigest: str, claim):
     claim["sourceUriDigest"] = srcDigest
@@ -179,6 +173,42 @@ def get_claim_docs():
     
     return claims_array
 
+def is_claim_new(claim) -> bool:
+    claim_docs = get_claim_docs()
+
+    for claim_doc in claim_docs:
+        if claim["uri"] == claim_doc["uri"] or claim["title"] == claim_doc["title"]:
+            return False
+
+    return True
+
+def create_claim_docs(claims: list):
+    with open('oapi.yaml', 'r') as f:
+        oapi_spec = yaml.safe_load(f)
+
+    claim_input_schema = oapi_spec['components']['schemas']['ClaimInput']
+    claim_example = claim_input_schema.get('example')
+
+    for claim in claims:
+        claim_doc = {}
+        for key in claim_example.keys():
+            claim_doc[key] = claim[key]
+        
+        title = claim_doc["title"]
+        filename = title.replace(" ", "_")
+        if len(filename) > 30:
+            filename = filename[:30]
+        filename = f"{filename}.yaml"
+        
+        # Create file path
+        file_path = os.path.join(claims_dir, filename)
+        
+        # Write claim_doc to YAML file
+        with open(file_path, 'w') as f:
+            yaml.dump(claim_doc, f, default_flow_style=False)
+        
+        print(f"Created claim document: {file_path}")
+
 def main():
     base_url = os.environ["API_BASE_URL"]
     api_key = os.environ["API_KEY"]
@@ -187,7 +217,6 @@ def main():
     openrouter_api_key = os.environ["OPENROUTER_API_KEY"]
     openrouter_base_url = os.environ["OPENROUTER_API_BASE_URL"]
 
-    claim_docs = get_claim_docs()
     sources = get_sources(base_url, api_key)
 
     # Fetch falsifiable claim skill
@@ -210,11 +239,16 @@ def main():
         # keep only those articles that can be classified as falsifiable claims
         filtered_claims = filter_claims(openrouter_base_url, openrouter_api_key, falsifiable_claim_skill, claims)
         
+        # list of new claims to be ingested
+        new_claims = []
         # keep only relevant fields in the claims
         for claim in filtered_claims:
             update_claim_fields(source["uriDigest"], claim)
+            if is_claim_new(claim):
+                new_claims.append(claim)
         
-        print(filtered_claims)
+        create_claim_docs(new_claims)
+        
         break
     
 if __name__ == "__main__":
