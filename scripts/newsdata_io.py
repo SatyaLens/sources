@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import glob
 import json
 import os
 import re
@@ -7,6 +8,7 @@ import sys
 from typing import Tuple
 from urllib.request import Request, urlopen
 import requests
+import yaml
 
 # Query parameters constants
 CATEGORY = "environment,technology,world"
@@ -157,6 +159,26 @@ def update_claim_fields(srcDigest: str, claim):
     claim["summary"] = claim["description"]
     claim["uri"] = claim["link"]
 
+def get_claim_docs():
+    claims_dir = os.path.join(os.path.dirname(__file__), "..", "claims")
+    claims_dir = os.path.abspath(claims_dir)
+    
+    # Find all YAML files in claims directory and subdirectories
+    yaml_files = glob.glob(os.path.join(claims_dir, "**", "*.yaml"), recursive=True)
+    yaml_files.extend(glob.glob(os.path.join(claims_dir, "**", "*.yml"), recursive=True))
+    
+    claims_array = []
+    for yaml_file in yaml_files:
+        try:
+            with open(yaml_file, 'r') as f:
+                claim_data = yaml.safe_load(f)
+                if claim_data:  # Only add if file is not empty
+                    claims_array.append(claim_data)
+        except Exception as e:
+            print(f"Error loading YAML file {yaml_file}: {e}", file=sys.stderr)
+    
+    return claims_array
+
 def main():
     base_url = os.environ["API_BASE_URL"]
     api_key = os.environ["API_KEY"]
@@ -165,6 +187,7 @@ def main():
     openrouter_api_key = os.environ["OPENROUTER_API_KEY"]
     openrouter_base_url = os.environ["OPENROUTER_API_BASE_URL"]
 
+    claim_docs = get_claim_docs()
     sources = get_sources(base_url, api_key)
 
     # Fetch falsifiable claim skill
