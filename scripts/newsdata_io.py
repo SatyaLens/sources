@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sys
+import time
 from typing import Tuple
 from urllib.request import Request, urlopen
 import requests
@@ -20,13 +21,15 @@ DATATYPE = "news,research,analysis,pressRelease"
 FALSIFIABLE_CLAIM_SKILL_URL = "https://raw.githubusercontent.com/semmet95/agent-skills/refs/heads/main/determine-falsifialbe-claim/SKILL.md"
 CLAIM_PER_SOURCE = 2
 FREE_MODELS_DOC = [
-    "openai/gpt-oss-120b:free",
+    "openai/gpt-oss-120b",
+    "mistralai/mistral-medium-3-5",
+    "moonshotai/kimi-k2-0905",
     "google/gemma-4-31b-it:free",
+    "qwen/qwen3-32b",
+    "google/gemini-3.1-flash-lite",
+    "deepseek/deepseek-v4-flash:free",
     "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-    "google/gemma-4-26b-a4b-it:free",
-    "nvidia/nemotron-nano-12b-v2-vl:free",
-    "z-ai/glm-4.5-air:free",
-    "openrouter/free"
+    "cohere/command-a"
 ]
 
 def fetch_web_text(url: str) -> str:
@@ -101,6 +104,7 @@ def filter_claims(base_url: str, api_key: str, falsifiable_claim_skill: str, cla
 
     filtered_claims = ""
     filtered_claims_list = []
+    ctr = 1
     for model in FREE_MODELS_DOC:
         payload = {
             "model": model,
@@ -136,6 +140,10 @@ def filter_claims(base_url: str, api_key: str, falsifiable_claim_skill: str, cla
                 continue
             break
 
+        # delay before sending the request again
+        time.sleep(30*ctr)
+        ctr += 1
+
     if filtered_claims_list == None or len(filtered_claims_list) == 0:
         print("Error: All models failed.", file=sys.stderr)
         sys.exit(1)
@@ -156,8 +164,8 @@ def get_claims(base_url: str, api_key: str, src_domain_url: str):
     }
     response = requests.get(endpoint, params=params, timeout=10)
     if response.status_code != 200:
-        print(f"Error: Received status code {response.status_code}")
-        exit(1)
+        print(f"Error: couldn't fetch claims for {src_domain_url}: {response.status_code}")
+        return None
     return response.json()["results"]
 
 def update_claim_fields(srcDigest: str, claim):
@@ -207,19 +215,27 @@ def create_claim_docs(claims: list, srcName: str):
     claim_input_schema = oapi_spec['components']['schemas']['ClaimInput']
     claim_example = claim_input_schema.get('example')
 
+    # Custom representer to force double quotes around strings
+    def quoted_str_representer(dumper, data):
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='"')
+    
+    yaml.add_representer(str, quoted_str_representer)
+
     for claim in claims:
         claim_doc = {}
         for key in claim_example.keys():
             claim_doc[key] = str(claim[key])
         
-        filename = clean_filepath(claim_doc["title"].lower())
+        filename = claim_doc["title"].lower()
         if len(filename) > 30:
             filename = filename[:30]
+        filename = clean_filepath(filename)
         filename = f"{filename}.yaml"
 
-        dirname = clean_filepath(srcName.lower())
+        dirname = srcName.lower()
         if len(dirname) > 30:
             dirname = dirname[:30]
+        dirname = clean_filepath(dirname)
         
         # Create file path
         file_path = os.path.join("claims", dirname, filename)
@@ -257,6 +273,8 @@ def main():
             src_to_patch.add(source["uriDigest"])
             
         claims = get_claims(news_data_base_url, news_data_api_key, domain_url)
+        if claims == None:
+            continue
 
         # keep only those articles that can be classified as falsifiable claims
         filtered_claims = filter_claims(openrouter_base_url, openrouter_api_key, falsifiable_claim_skill, claims)
@@ -270,8 +288,6 @@ def main():
                 new_claims.append(claim)
         
         create_claim_docs(new_claims, source["name"])
-        
-        break
     
 if __name__ == "__main__":
     sys.exit(main())
