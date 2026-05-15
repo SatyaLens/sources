@@ -20,9 +20,13 @@ DATATYPE = "news,research,analysis,pressRelease"
 FALSIFIABLE_CLAIM_SKILL_URL = "https://raw.githubusercontent.com/semmet95/agent-skills/refs/heads/main/determine-falsifialbe-claim/SKILL.md"
 CLAIM_PER_SOURCE = 2
 FREE_MODELS_DOC = [
+    "openai/gpt-oss-120b:free",
     "google/gemma-4-31b-it:free",
     "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
     "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "z-ai/glm-4.5-air:free",
+    "openrouter/free"
 ]
 
 def fetch_web_text(url: str) -> str:
@@ -51,7 +55,7 @@ def post_openrouter(base_url: str, api_key: str, payload: dict) -> Tuple[int, st
 
     status = -1
     try:
-        with urlopen(req, timeout=60) as r:
+        with urlopen(req, timeout=120) as r:
             status = r.getcode()
             body = r.read().decode("utf-8")
     except Exception as e:
@@ -69,7 +73,7 @@ def req_openrouter(base_url: str, api_key: str, payload: dict) -> str:
         except Exception as e:
             print(f"Failed to parse JSON response: {e}", file=sys.stderr)
             print(body)
-            sys.exit(1)
+            return ""
 
         # Extract assistant reply
         reply = None
@@ -78,7 +82,7 @@ def req_openrouter(base_url: str, api_key: str, payload: dict) -> str:
             return reply
         except Exception as e:
             print(f"Failed to access key [choices][0][message][content]: {e}", file=sys.stderr)
-            sys.exit(1)
+            return ""
     else:
         print(f"Openrouter response status: {status}", file=sys.stderr)
         return ""
@@ -96,6 +100,7 @@ def filter_claims(base_url: str, api_key: str, falsifiable_claim_skill: str, cla
     )
 
     filtered_claims = ""
+    filtered_claims_list = []
     for model in FREE_MODELS_DOC:
         payload = {
             "model": model,
@@ -112,24 +117,31 @@ def filter_claims(base_url: str, api_key: str, falsifiable_claim_skill: str, cla
         }
 
         filtered_claims = req_openrouter(base_url, api_key, payload)
-        if filtered_claims != "":
+        if filtered_claims != None and filtered_claims != "":
+            # models often return the json string wrapped in a code block or with incompatible values
+            filtered_claims = filtered_claims.replace("'", '"')
+            # Replace all Python boolean and None values
+            filtered_claims = re.sub(r':\s*None\b', ': null', filtered_claims)
+            filtered_claims = re.sub(r':\s*False\b', ': false', filtered_claims)
+            filtered_claims = re.sub(r':\s*True\b', ': true', filtered_claims)
+            
+            match = re.search(r'```(?:json)?\s*(.*?)\s*```', filtered_claims, re.DOTALL)
+            if match:
+                filtered_claims = match.group(1)
+            
+            try:
+                filtered_claims_list = json.loads(filtered_claims)
+            except Exception as e:
+                print(f"Error: failed to unmarshal claims json string {filtered_claims}: {e}", file=sys.stderr)
+                continue
             break
 
-    if filtered_claims == None or filtered_claims == "":
+    if filtered_claims_list == None or len(filtered_claims_list) == 0:
         print("Error: All models failed.", file=sys.stderr)
         sys.exit(1)
     
-    # models often return the json string wrapped in a code block or with incompatible values
-    # Replace all Python boolean and None values
-    filtered_claims = re.sub(r':\s*None\b', ': null', filtered_claims)
-    filtered_claims = re.sub(r':\s*False\b', ': false', filtered_claims)
-    filtered_claims = re.sub(r':\s*True\b', ': true', filtered_claims)
-
-    match = re.search(r'```(?:json)?\s*(.*?)\s*```', filtered_claims, re.DOTALL)
-    if match:
-        return json.loads(match.group(1))
-    
-    return json.loads(filtered_claims)
+   
+    return filtered_claims_list
 
 def get_claims(base_url: str, api_key: str, src_domain_url: str):
     endpoint = f"{base_url}/latest"
@@ -182,7 +194,7 @@ def is_claim_new(claim) -> bool:
 
     return True
 
-def create_claim_docs(claims: list):
+def create_claim_docs(claims: list, srcName: str):
     with open('oapi.yaml', 'r') as f:
         oapi_spec = yaml.safe_load(f)
 
@@ -194,14 +206,17 @@ def create_claim_docs(claims: list):
         for key in claim_example.keys():
             claim_doc[key] = claim[key]
         
-        title = claim_doc["title"]
-        filename = title.replace(" ", "_")
+        filename = claim_doc["title"].replace(" ", "_").lower()
         if len(filename) > 30:
             filename = filename[:30]
         filename = f"{filename}.yaml"
+
+        dirname = srcName.replace(" ", "_").lower()
+        if len(dirname) > 30:
+            dirname = dirname[:30]
         
         # Create file path
-        file_path = os.path.join(claims_dir, filename)
+        file_path = os.path.join("claims", dirname, filename)
         
         # Write claim_doc to YAML file
         with open(file_path, 'w') as f:
@@ -247,7 +262,7 @@ def main():
             if is_claim_new(claim):
                 new_claims.append(claim)
         
-        create_claim_docs(new_claims)
+        create_claim_docs(new_claims, source["name"])
         
         break
     
