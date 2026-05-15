@@ -194,6 +194,12 @@ def is_claim_new(claim) -> bool:
 
     return True
 
+def clean_filepath(path: str, replace: str = "_") -> str:
+    cleaned = re.sub(r'[^a-zA-Z0-9_-]', replace, path)
+    cleaned = re.sub(f'{re.escape(replace)}+', replace, cleaned)
+    cleaned = cleaned.strip(replace)
+    return cleaned
+
 def create_claim_docs(claims: list, srcName: str):
     with open('oapi.yaml', 'r') as f:
         oapi_spec = yaml.safe_load(f)
@@ -204,14 +210,14 @@ def create_claim_docs(claims: list, srcName: str):
     for claim in claims:
         claim_doc = {}
         for key in claim_example.keys():
-            claim_doc[key] = claim[key]
+            claim_doc[key] = str(claim[key])
         
-        filename = claim_doc["title"].replace(" ", "_").lower()
+        filename = clean_filepath(claim_doc["title"].lower())
         if len(filename) > 30:
             filename = filename[:30]
         filename = f"{filename}.yaml"
 
-        dirname = srcName.replace(" ", "_").lower()
+        dirname = clean_filepath(srcName.lower())
         if len(dirname) > 30:
             dirname = dirname[:30]
         
@@ -219,8 +225,9 @@ def create_claim_docs(claims: list, srcName: str):
         file_path = os.path.join("claims", dirname, filename)
         
         # Write claim_doc to YAML file
-        with open(file_path, 'w') as f:
-            yaml.dump(claim_doc, f, default_flow_style=False)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, 'w', encoding='utf-8') as f:
+            yaml.dump(claim_doc, f, default_flow_style=False, allow_unicode=True, width=float('inf'))
         
         print(f"Created claim document: {file_path}")
 
