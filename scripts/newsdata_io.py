@@ -21,15 +21,9 @@ DATATYPE = "news,research,analysis,pressRelease"
 
 FALSIFIABLE_CLAIM_SKILL_URL = "https://raw.githubusercontent.com/semmet95/agent-skills/refs/heads/main/determine-falsifialbe-claim/SKILL.md"
 CLAIM_PER_SOURCE = 2
-# FREE_MODELS_DOC = [
-#     "google/gemma-4-31b-it:free",
-#     "deepseek/deepseek-v4-flash:free",
-#     "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-#     "cohere/command-a",
-#     "openrouter/free"
-# ]
-
 FREE_MODELS_DOC = [
+    "google/gemma-4-31b-it:free",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
     "openrouter/free"
 ]
 
@@ -60,7 +54,7 @@ def post_openrouter(base_url: str, api_key: str, payload: dict) -> Tuple[int, st
 
     status = -1
     try:
-        with urlopen(req, timeout=120) as r:
+        with urlopen(req, timeout=180) as r:
             status = r.getcode()
             body = r.read().decode("utf-8")
     except Exception as e:
@@ -97,9 +91,9 @@ def filter_claims(base_url: str, api_key: str, falsifiable_claim_skill: str, cla
         "Following is a list of 10 articles published by the same news outlet. Each article is represented by a json string type element in the array\n\n"
         f"{claims}"
         "\n\nUse web search tool to visit the link for each article, access the content and then assess if it is a falsifiable claim."
-        "\nOut of these 10 articles, only return the 2 article that best fit the falsifiable claim criterion."
+        "\nOut of these 10 articles, only return 1 article that best fits the falsifiable claim criterion."
         "Prefer claims that have been made by the news source directly"
-        "Keep the json structure of the claims the same as the input. Do not add or remove any field."
+        "Keep the json structure of the claims the same as the original schema in the input. Do not add remove, or modify any key or value in the json string."
         "Only output the plain json array string that I can safely unmarshal."
         "Do not format the string. Do not output anything else."
     )
@@ -124,18 +118,18 @@ def filter_claims(base_url: str, api_key: str, falsifiable_claim_skill: str, cla
 
         filtered_claims = req_openrouter(base_url, api_key, payload)
         if filtered_claims != None and filtered_claims != "" and filtered_claims != "[]":
-            # models often return the json string wrapped in a code block or with incompatible values            
-            filtered_claims = filtered_claims.strip().replace("'", '"')
             # Replace all Python boolean and None values
             filtered_claims = re.sub(r':\s*None\b', ': null', filtered_claims)
             filtered_claims = re.sub(r':\s*False\b', ': false', filtered_claims)
             filtered_claims = re.sub(r':\s*True\b', ': true', filtered_claims)
             
+            # models often return the json string wrapped in a code block or with incompatible values
             match = re.search(r'```(?:json)?\s*(.*?)\s*```', filtered_claims, re.DOTALL)
             if match:
                 filtered_claims = match.group(1)
             try:
                 filtered_claims = filtered_claims.replace("`", "'")
+                filtered_claims = filtered_claims.strip().replace("'", "\'")
                 filtered_claims = json.dumps(demjson3.decode(filtered_claims))
                 filtered_claims_list = json.loads(filtered_claims)
             except Exception as e:
@@ -259,8 +253,6 @@ def main():
     news_data_api_key = os.environ["NEWSDATA_API_KEY"]
     openrouter_api_key = os.environ["OPENROUTER_API_KEY"]
     openrouter_base_url = os.environ["OPENROUTER_API_BASE_URL"]
-    # openrouter_api_key = os.environ["LLM_GATEWAY_API_KEY"]
-    # openrouter_base_url = "https://api.llmgateway.io/v1"
 
     sources = get_sources(base_url, api_key)
 
@@ -283,6 +275,8 @@ def main():
         if claims == None or len(claims) == 0:
             continue
 
+        # add gaps between openrouter api requests
+        time.sleep(30)
         # keep only those articles that can be classified as falsifiable claims
         filtered_claims = filter_claims(openrouter_base_url, openrouter_api_key, falsifiable_claim_skill, claims)
         
