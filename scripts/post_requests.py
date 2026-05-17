@@ -158,6 +158,8 @@ def main() -> int:
 
         if 200 <= status < 300:
             _info("%s → %s (%d)", str(norm_path), url, status)
+        elif status == 409:
+            _info("%s → %s : Already exists, skipping", str(norm_path), url)
         else:
             _error("%s → %s (%d): %s", str(norm_path), url, status, body[:200])
             failed = True
