@@ -22,22 +22,15 @@ DATATYPE = "news,research,analysis,pressRelease"
 FALSIFIABLE_CLAIM_SKILL_URL = "https://raw.githubusercontent.com/semmet95/agent-skills/refs/heads/main/determine-falsifialbe-claim/SKILL.md"
 CLAIM_PER_SOURCE = 2
 # FREE_MODELS_DOC = [
-#     "openai/gpt-oss-120b",
-#     "mistralai/mistral-medium-3-5",
-#     "moonshotai/kimi-k2-0905",
 #     "google/gemma-4-31b-it:free",
-#     "qwen/qwen3-32b",
-#     "google/gemini-3.1-flash-lite",
 #     "deepseek/deepseek-v4-flash:free",
 #     "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-#     "cohere/command-a"
+#     "cohere/command-a",
+#     "openrouter/free"
 # ]
 
 FREE_MODELS_DOC = [
-    "embercloud/glm-4.7-flash",
-    "zai/glm-4.7-flash",
-    "zai/glm-4.6v-flash",
-    "zai/glm-4.5-flash"
+    "openrouter/free"
 ]
 
 
@@ -124,16 +117,15 @@ def filter_claims(base_url: str, api_key: str, falsifiable_claim_skill: str, cla
                     "content": filter_prompt
                 },
             ],
-            # "tools": [
-            #     # {"type": "openrouter:web_search"}
-            #     {"type": "web_search"}
-            # ]
+            "tools": [
+                {"type": "openrouter:web_search"}
+            ]
         }
 
         filtered_claims = req_openrouter(base_url, api_key, payload)
-        if filtered_claims != None and filtered_claims != "":
+        if filtered_claims != None and filtered_claims != "" and filtered_claims != "[]":
             # models often return the json string wrapped in a code block or with incompatible values            
-            filtered_claims = filtered_claims.replace("'", '"')
+            filtered_claims = filtered_claims.strip().replace("'", '"')
             # Replace all Python boolean and None values
             filtered_claims = re.sub(r':\s*None\b', ': null', filtered_claims)
             filtered_claims = re.sub(r':\s*False\b', ': false', filtered_claims)
@@ -149,7 +141,9 @@ def filter_claims(base_url: str, api_key: str, falsifiable_claim_skill: str, cla
             except Exception as e:
                 print(f"Error: failed to unmarshal claims json string {filtered_claims}: {e}", file=sys.stderr)
                 continue
-            break
+            
+            if filtered_claims_list != None and len(filtered_claims_list) != 0:
+                break
 
         # delay before sending the request again
         time.sleep(30*ctr)
@@ -263,10 +257,10 @@ def main():
     api_key = os.environ["API_KEY"]
     news_data_base_url = os.environ["NEWSDATA_API_BASE_URL"]
     news_data_api_key = os.environ["NEWSDATA_API_KEY"]
-    # openrouter_api_key = os.environ["OPENROUTER_API_KEY"]
-    # openrouter_base_url = os.environ["OPENROUTER_API_BASE_URL"]
-    openrouter_api_key = os.environ["LLM_GATEWAY_API_KEY"]
-    openrouter_base_url = "https://api.llmgateway.io/v1"
+    openrouter_api_key = os.environ["OPENROUTER_API_KEY"]
+    openrouter_base_url = os.environ["OPENROUTER_API_BASE_URL"]
+    # openrouter_api_key = os.environ["LLM_GATEWAY_API_KEY"]
+    # openrouter_base_url = "https://api.llmgateway.io/v1"
 
     sources = get_sources(base_url, api_key)
 
@@ -286,7 +280,7 @@ def main():
             src_to_patch.add(source["uriDigest"])
             
         claims = get_claims(news_data_base_url, news_data_api_key, domain_url)
-        if claims == None:
+        if claims == None or len(claims) == 0:
             continue
 
         # keep only those articles that can be classified as falsifiable claims
