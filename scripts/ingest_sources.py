@@ -9,8 +9,6 @@ import yaml
 import helper
 import openrouter
 
-WEB_SEARCH_TOOL = {"type": "openrouter:web_search"}
-
 MD_PROCESSING_SKILL_URL = os.getenv(
     "MD_PROCESSING_SKILL_URL",
     "https://raw.githubusercontent.com/semmet95/agent-skills/refs/heads/main/md-processing/SKILL.md"
@@ -133,7 +131,7 @@ def main():
         f"\n\n{raw_source_list}\n\n"
         f"{SOURCE_CLEANUP_PROMPT}"
     )
-    source_list = openrouter.req_w_addons(req_content, tools=[WEB_SEARCH_TOOL])
+    source_list = openrouter.req_w_addons(req_content, tools=[openrouter.WEB_SEARCH_TOOL])
     if source_list == "":
         print("Error: failed to get filtered list of source urls", file=sys.stderr)
         sys.exit(1)
@@ -150,7 +148,7 @@ def main():
         f"\n\n{source_list}\n\n"
         f"{SOURCE_DOC_GEN_PROMPT}"
     )
-    src_docs_str = openrouter.req_w_addons(req_content, tools=[WEB_SEARCH_TOOL])
+    src_docs_str = openrouter.req_w_addons(req_content, tools=[openrouter.WEB_SEARCH_TOOL])
     if src_docs_str == "":
         print("Error: failed to generate source docs from source urls", file=sys.stderr)
         sys.exit(1)

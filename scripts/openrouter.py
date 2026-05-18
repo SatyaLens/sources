@@ -20,6 +20,7 @@ FREE_MODELS_DOC = [
     "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
     "openrouter/free"
 ]
+WEB_SEARCH_TOOL = {"type": "openrouter:web_search"}
 
 OPENROUTER_API_KEY = os.environ["OPENROUTER_API_KEY"]
 MD_PROCESSING_SKILL_URL = os.getenv("MD_PROCESSING_SKILL_URL", "https://raw.githubusercontent.com/semmet95/agent-skills/refs/heads/main/md-processing/SKILL.md")
