@@ -26,9 +26,12 @@ except Exception:  # pragma: no cover - very unlikely
 MD_PROCESSING_SKILL_URL = "https://raw.githubusercontent.com/semmet95/agent-skills/refs/heads/main/md-processing/SKILL.md"
 SOURCE_QUESTION = "What are the top 10 latest most popular news outlets in the world listed in this document? Only output URLs of these news outlets separated by new lines. Do not output anything else."
 FREE_MODELS_DOC = [
+    "openai/gpt-oss-120b:free",
     "google/gemma-4-31b-it:free",
     "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
     "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "z-ai/glm-4.5-air:free"
 ]
 
 

@@ -613,6 +613,11 @@ components:
           x-oapi-codegen-extra-tags:
             binding: required
             validate: httpsurl
+      example:
+        sourceUriDigest: "8649a4126fb4fc9a750f432b729c8477398cf28ca241403b2cd36a6dc841f441"
+        summary: "The unemployment rate decreased by 2% in Q4 2024"
+        title: "Unemployment Rate Decrease"
+        uri: "https://www.nytimes.com/2024/unemployment-report"
 
     Claim:
       type: object
