@@ -42,7 +42,7 @@ def get_claim_docs(claims_dir: str):
     claims_array = []
     for yaml_file in yaml_files:
         try:
-            with open(yaml_file, 'r') as f:
+            with open(yaml_file, 'r', encoding='utf-8') as f:
                 claim_data = yaml.safe_load(f)
                 if claim_data:  # Only add if file is not empty
                     claims_array.append(claim_data)
@@ -95,6 +95,11 @@ def create_claim_docs(claims: list, srcName: str):
         
         # Create file path
         file_path = os.path.join("claims", dirname, filename)
+
+        # avoid overwriting existing files
+        if os.path.exists(file_path):
+            print(f"Warning: claim file with name : {file_path} already exists", file=sys.stderr)
+            continue
         
         # Write claim_doc to YAML file
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -110,7 +115,7 @@ def main():
     all_claim_docs = get_claim_docs(claims_dir)
 
     sources = helper.get_sources(API_BASE_URL, API_KEY)
-    if sources == None:
+    if sources is None:
         print(f"Error: failed to fetch all sources", file=sys.stderr)
         sys.exit(1)
 
@@ -127,7 +132,7 @@ def main():
             domain_url = source["domainUrlNewsData"]
             
         claims = newsdata_io.get_claims(domain_url)
-        if claims == None or len(claims) == 0:
+        if claims is None or len(claims) == 0:
             continue
 
         # keep only those articles that can be classified as falsifiable claims

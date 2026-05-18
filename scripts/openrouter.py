@@ -41,7 +41,7 @@ def req_chat(payload: dict) -> str:
             60,
         )
 
-        if status in [500, 429]:
+        if status == 0 or status == 429 or 500 <= status < 600:
             print(f"OpenRouter API returned status {status}, retrying...", file=sys.stderr)
             time.sleep(10 * i)
             continue

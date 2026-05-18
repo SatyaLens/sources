@@ -55,7 +55,7 @@ def remove_ingested_sources(source_docs: list[str], sources_dir: str) -> list[st
         except Exception as e:
             print(f"Warning: failed to parse source_doc; not adding it to the source list it. Error: {e}", file=sys.stderr)
             continue
-        if doc == None:
+        if doc is None:
             print(f"Warning: skipping the following yaml string as it failed to load: {doc_str}", file=sys.stderr)
             continue
         duplicate = False
@@ -77,7 +77,7 @@ def write_source_docs(source_docs: list[str], sources_dir: str):
             continue
 
         filename = parsed.get('name')
-        if filename == None or filename.strip() == '':
+        if filename is None or filename.strip() == '':
             print(f"Warning: invalid source name or failed to extract name field from : {doc_str}", file=sys.stderr)
             continue
 
@@ -100,7 +100,7 @@ def write_source_docs(source_docs: list[str], sources_dir: str):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: openrouter.py TMP_MD", file=sys.stderr)
+        print("Usage: ingest_sources.py TMP_MD", file=sys.stderr)
         sys.exit(1)
 
     tmp_md = sys.argv[1]

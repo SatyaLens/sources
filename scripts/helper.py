@@ -72,6 +72,6 @@ def post_request(endpoint: str, headers: dict, payload: dict, timeout: int) -> T
             body = r.read().decode("utf-8")
     except Exception as e:
         print(f"Error making request to {endpoint}: {e}", file=sys.stderr)
-        return -1, ""
+        return 0, ""
 
     return status, body
