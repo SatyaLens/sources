@@ -2,3 +2,5 @@ pyyaml
 jsonschema
 referencing
 firecrawl-py
+requests
+demjson3
