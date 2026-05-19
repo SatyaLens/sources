@@ -108,13 +108,12 @@ def create_claim_docs(claims: list, srcName: str):
         
         print(f"Created claim document: {file_path}")
 
-# TODO: maintain a list of sources for which domainUrlNewsData fields needs to be updated
 def main():
     claims_dir = os.path.join(os.path.dirname(__file__), "..", "claims")
     claims_dir = os.path.abspath(claims_dir)
     all_claim_docs = get_claim_docs(claims_dir)
 
-    sources = helper.get_sources(API_BASE_URL, API_KEY)
+    sources = helper.get_sources(API_KEY, API_BASE_URL)
     if sources is None:
         print(f"Error: failed to fetch all sources", file=sys.stderr)
         sys.exit(1)
@@ -130,6 +129,8 @@ def main():
         domain_url = source["uri"]
         if source["domainUrlNewsData"] != "":
             domain_url = source["domainUrlNewsData"]
+        else:
+            helper.patch_sources(API_KEY, API_BASE_URL, source["uriDigest"], {"domainUrlNewsData": domain_url})
             
         claims = newsdata_io.get_claims(domain_url)
         if claims is None or len(claims) == 0:
