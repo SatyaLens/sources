@@ -22,4 +22,4 @@ trap 'rm -f "$TMP_MD"' EXIT
 python3 scripts/scrape_firecrawl.py "$URL" >"$TMP_MD"
 
 # Process the scraped document using LLMs
-python3 scripts/openrouter.py "$TMP_MD"
+python3 scripts/ingest_sources.py "$TMP_MD"
