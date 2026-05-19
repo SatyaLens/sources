@@ -28,6 +28,14 @@ CLAIM_FILTER_PROMPT = os.getenv(
         "Do not format the string. Do not output anything else."
     )
 )
+CLAIM_SUMMARY_PROMPT = os.getenv(
+    "CLAIM_SUMMARY_PROMPT",
+    (
+        "Use web search tool to visit the link to the article and access its content."
+        "Summarize the article in under 500 characters."
+        "Return only the summary without any additional text."
+    )
+)
 
 def update_claim_fields(srcDigest: str, claim):
     claim["sourceUriDigest"] = srcDigest
@@ -158,7 +166,23 @@ def main():
             continue
 
         # list of new claims to be ingested
-        new_unique_claims = get_new_claims(all_claim_docs, filtered_claims_list, source["uriDigest"])        
+        new_unique_claims = get_new_claims(all_claim_docs, filtered_claims_list, source["uriDigest"])
+        
+        # some claims have null description, use LLM to populate their description field
+        for claim in new_unique_claims:
+            if claim.get("description") is None or claim["description"].lower() == "none" or claim["description"] == "" or claim["description"].lower() == "null" :
+                req_content = (
+                    "Following is the url to an article published by a news media outlet."
+                    f"\n\n{claim["link"]}\n\n"
+                    f"{CLAIM_SUMMARY_PROMPT}"
+                )
+                claim_summary = openrouter.req_w_addons(req_content, tools=[openrouter.WEB_SEARCH_TOOL])
+                claim["description"] = claim_summary
+                claim["summary"] = claim_summary
+                if claim_summary == "":
+                    print(f"Error: failed to get summary for claim {claim["link"]}", file=sys.stderr)
+                    continue
+
         create_claim_docs(new_unique_claims, source["name"])
     
 if __name__ == "__main__":

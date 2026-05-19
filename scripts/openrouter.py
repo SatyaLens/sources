@@ -38,7 +38,7 @@ def req_chat(payload: dict) -> str:
             OPENROUTER_CHAT_ENDPOINT,
             headers,
             payload,
-            60,
+            180,
         )
 
         if status == 0 or status == 429 or 500 <= status < 600:
