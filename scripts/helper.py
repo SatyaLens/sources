@@ -81,5 +81,5 @@ def patch_sources(api_key: str, base_url: str, uriDigest: str, body: dict):
     endpoint = f"{base_url}/api/v1/source/{uriDigest}"
     headers = {"X-API-Key": api_key, "Content-Type": "application/json"}
     status, _ = post_request(endpoint, headers, body, timeout=90, method="PATCH")
-    if status != 200:
+    if status != 204:
         print(f"Error: failed to patch source {uriDigest}: {status}", file=sys.stderr)

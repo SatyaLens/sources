@@ -73,7 +73,7 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No changes to commit"
           else
-            git commit -m "feat(sources): adds new most popular sources"
+            git commit -m "chore(sources): adds new most popular sources"
             git push origin "$BRANCH"
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
@@ -83,5 +83,5 @@ jobs:
         run: |
           gh pr create \
             --title "Auto PR: Scheduled addition of new sources" \
-            --body "Adds most popular news source in the last week for ingestion" \
+            --body "Adds most popular news source in the last month for ingestion" \
             --base main
