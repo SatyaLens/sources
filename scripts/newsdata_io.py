@@ -28,7 +28,7 @@ def get_claims(src_domain_url: str):
     if response.status_code != 200:
         print(f"Error: couldn't fetch claims for {src_domain_url}: {response.status_code}")
         resp_body = response.json()
-        if resp_body.get("results") is not None and resp_body.get("results").get("suggestion") is not None:
-            print(f"Suggested domain url(s) for {src_domain_url}: {resp_body['results']['suggestion']}")
+        if resp_body.get("results") is not None and resp_body.get("results")[0].get("suggestion") is not None:
+            print(f"Suggested domain url(s) for {src_domain_url}: {resp_body['results'][0]['suggestion']}")
         return None
     return response.json()["results"]
