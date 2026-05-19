@@ -27,5 +27,7 @@ def get_claims(src_domain_url: str):
     response = requests.get(endpoint, params=params, timeout=10)
     if response.status_code != 200:
         print(f"Error: couldn't fetch claims for {src_domain_url}: {response.status_code}")
+        if response.json()["results"]["suggestion"]:
+            print(f"Suggested domain url(s) for {src_domain_url}: {response.json()['results']['suggestion']}")
         return None
     return response.json()["results"]

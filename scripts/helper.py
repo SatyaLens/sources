@@ -26,7 +26,7 @@ def get_oapi_spec():
     with open(oapi_path, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
-def get_sources(base_url: str, api_key: str):
+def get_sources(api_key: str, base_url: str):
     endpoint = f"{base_url}/api/v1/sources"
     headers = {"X-API-Key": api_key}
     response = requests.get(endpoint, headers=headers, timeout=90)
@@ -75,3 +75,10 @@ def post_request(endpoint: str, headers: dict, payload: dict, timeout: int) -> T
         return 0, ""
 
     return status, body
+
+def patch_sources(api_key: str, base_url: str, uriDigest: str, body: dict):
+    endpoint = f"{base_url}/api/v1/sources/{uriDigest}"
+    headers = {"X-API-Key": api_key, "Content-Type": "application/json"}
+    status, _ = post_request(endpoint, headers, body, timeout=90)
+    if status != 200:
+        print(f"Error: failed to patch source {uriDigest}: {status}", file=sys.stderr)
