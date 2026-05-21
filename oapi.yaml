@@ -756,6 +756,11 @@ components:
           x-oapi-codegen-extra-tags:
             binding: required
             validate: httpsurl
+      example:
+        claimUriDigest: "369d9f3047c66c2e9b5e39693d9de3664b61a36a2d77cd0484fade042350d4a1"
+        supportsClaim: true
+        reviewedBy: "fact-checker-001"
+        uri: "https://bls.gov/unemployment-data-q4-2024"
 
     Proof:
       type: object

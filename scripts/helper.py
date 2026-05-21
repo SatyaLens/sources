@@ -83,3 +83,12 @@ def patch_sources(api_key: str, base_url: str, uriDigest: str, body: dict):
     status, _ = post_request(endpoint, headers, body, timeout=90, method="PATCH")
     if status != 204:
         print(f"Error: failed to patch source {uriDigest}: {status}", file=sys.stderr)
+
+def get_claims(api_key: str, base_url: str):
+    endpoint = f"{base_url}/api/v1/claims"
+    headers = {"X-API-Key": api_key}
+    response = requests.get(endpoint, headers=headers, timeout=90)
+    if response.status_code != 200:
+        print(f"Error: failed to get all claims: {response.status_code}")
+        return None
+    return response.json()
