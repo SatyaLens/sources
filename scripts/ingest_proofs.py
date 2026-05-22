@@ -112,7 +112,7 @@ def main():
 
     all_claims = helper.get_claims(API_KEY, API_BASE_URL)    
     if all_claims is None:
-        print(f"Error: failed to fetch all claims", file=sys.stderr)
+        print("Error: failed to fetch all claims", file=sys.stderr)
         sys.exit(1)
 
     # Fetch claim verification skill
@@ -123,11 +123,11 @@ def main():
         sys.exit(1)
     
     for claim in all_claims:
-        print(f"fetching prrofs for claim {claim["uri"]}")
+        print(f"fetching proofs for claim {claim["uri"]}")
         # get proofs that either support or deny the claim conclusively
         req_content = (
             "Following is a link to a falsifiable claim by a news media outlet as an article"
-            f"\n\n{claim["uri"]}\n\n"
+            f"\n\n{claim['uri']}\n\n"
             f"{CLAIM_VERIFICATION_PROMPT}"
         )
         claim_proofs = openrouter.req_w_addons(req_content, skill=falsifiable_claim_skill, tools=[openrouter.WEB_SEARCH_TOOL])

@@ -29,7 +29,13 @@ def get_oapi_spec():
 def get_sources(api_key: str, base_url: str):
     endpoint = f"{base_url}/api/v1/sources"
     headers = {"X-API-Key": api_key}
-    response = requests.get(endpoint, headers=headers, timeout=90)
+
+    try:
+        response = requests.get(endpoint, headers=headers, timeout=90)
+    except requests.RequestException as e:
+        print(f"Error: failed to get all sources from {endpoint}: {e}", file=sys.stderr)
+        return None
+
     if response.status_code != 200:
         print(f"Error: failed to get all sources: {response.status_code}")
         return None
@@ -48,7 +54,11 @@ def cleanup_json_str(json_str: str) -> str:
 
     json_str = json_str.replace("`", "'")
     json_str = json_str.strip().replace("'", "\'")
-    json_str = json.dumps(demjson3.decode(json_str))
+    try:
+        json_str = json.dumps(demjson3.decode(json_str))
+    except Exception as e:
+        print(f"Error decoding JSON string: {e}", file=sys.stderr)
+        return ""
 
     return json_str
 
@@ -87,7 +97,13 @@ def patch_sources(api_key: str, base_url: str, uriDigest: str, body: dict):
 def get_claims(api_key: str, base_url: str):
     endpoint = f"{base_url}/api/v1/claims"
     headers = {"X-API-Key": api_key}
-    response = requests.get(endpoint, headers=headers, timeout=90)
+
+    try:
+        response = requests.get(endpoint, headers=headers, timeout=90)
+    except requests.RequestException as e:
+        print(f"Error: failed to get all claims from {endpoint}: {e}", file=sys.stderr)
+        return None
+
     if response.status_code != 200:
         print(f"Error: failed to get all claims: {response.status_code}")
         return None
