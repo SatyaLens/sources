@@ -1,0 +1,88 @@
+name: Fetch and add new proofs
+
+on:
+  workflow_dispatch:
+  schedule:
+    # once a week
+    - cron: '0 0 * * 0'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fetch-and-add:
+    env:
+      BRANCH: proof-auto-add-${{ github.run_id }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      TOP_SOURCES_LIST: ${{ vars.TOP_SOURCES_LIST }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      API_KEY: ${{ secrets.API_KEY }}
+      API_BASE_URL: ${{ vars.API_BASE_URL }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create branch from main
+        run: |
+          git checkout -b "$BRANCH" origin/main
+
+      - name: Run proof fetch script (with retries)
+        run: |
+          set -e
+          attempt=1
+          max=3
+          until [ $attempt -gt $max ]; do
+            echo "Attempt $attempt..."
+            if python scripts/ingest_proofs.py; then
+              echo "Script succeeded"
+              break
+            fi
+            attempt=$((attempt+1))
+            if [ $attempt -le $max ]; then
+              echo "Retrying in 60 seconds..."
+              sleep 60
+            fi
+          done
+          if [ $attempt -gt $max ]; then
+            echo "Script failed after $max attempts"
+            exit 1
+          fi
+
+      - name: Commit and push changes
+        id: commit
+        run: |
+          git add --all
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes to commit"
+          else
+            git commit -m "chore(proofs): adds new proofs for the ingested claims"
+            git push origin "$BRANCH"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Pull Request
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          gh pr create \
+            --title "Auto PR: Scheduled addition of new proofs" \
+            --body "Adds proofs for claims made by the ingested sources in the last week for ingestion" \
+            --base main
