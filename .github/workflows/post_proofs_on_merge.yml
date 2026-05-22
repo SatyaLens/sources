@@ -1,4 +1,4 @@
-name: POST New Documents on Merge
+name: POST New Proof Documents on Merge
 
 on:
   push:
@@ -26,16 +26,13 @@ jobs:
       - name: Get added files in latest commit
         id: added
         run: |
-          files=$(git diff --diff-filter=A HEAD~1 HEAD --name-only | grep -E '^(sources|claims)/' || true)
+          files=$(git diff --diff-filter=A HEAD~1 HEAD --name-only | grep -E '^(proofs)/' || true)
           echo "Added files:"
           echo "$files"
-          # Order: sources, claims
-          ordered_files=$(echo "$files" | grep '^sources/' || true)
-          ordered_files+=$'\n'$(echo "$files" | grep '^claims/' || true)
           # Trim only leading/trailing whitespace, preserve internal spaces in filenames
-          ordered_files=$(echo "$ordered_files" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          files=$(echo "$files" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
           echo "ADDED_FILES<<EOF" >> "$GITHUB_ENV"
-          echo "$ordered_files" >> "$GITHUB_ENV"
+          echo "$files" >> "$GITHUB_ENV"
           echo "EOF" >> "$GITHUB_ENV"
 
       - name: POST new documents
