@@ -2,7 +2,7 @@ name: Verify Claims and Source Scores
 
 on:
   workflow_run:
-    workflows: ["POST New Documents on Merge"]
+    workflows: ["POST New Proof Documents on Merge"]
     types:
       - completed
 
