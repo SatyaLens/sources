@@ -1,14 +1,15 @@
 name: Verify Claims and Source Scores
 
 on:
+  workflow_dispatch:
   workflow_run:
-    workflows: ["POST New Proof Documents on Merge"]
+    workflows: ["POST New Documents on Merge"]
     types:
       - completed
 
 jobs:
   verify-and-score:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     steps:
     - name: Verify claims
