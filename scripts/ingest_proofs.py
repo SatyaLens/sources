@@ -117,7 +117,7 @@ def main():
 
     # Fetch claim verification skill
     try:
-        falsifiable_claim_skill = helper.get_text_from_url(CLAIM_VERIFICATION_SKILL_URL)
+        claim_verification_skill = helper.get_text_from_url(CLAIM_VERIFICATION_SKILL_URL)
     except Exception as e:
         print(f"Error: failed to fetch skill from {CLAIM_VERIFICATION_SKILL_URL}: {e}", file=sys.stderr)
         sys.exit(1)
@@ -130,7 +130,7 @@ def main():
             f"\n\n{claim['uri']}\n\n"
             f"{CLAIM_VERIFICATION_PROMPT}"
         )
-        claim_proofs = openrouter.req_w_addons(req_content, skill=falsifiable_claim_skill, tools=[openrouter.WEB_SEARCH_TOOL])
+        claim_proofs = openrouter.req_w_addons(req_content, skill=claim_verification_skill, tools=[openrouter.WEB_SEARCH_TOOL])
         if claim_proofs == "":
             print(f"Error: failed to get proofs for claim {claim['uri']}", file=sys.stderr)
             continue
