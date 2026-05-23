@@ -73,7 +73,7 @@ def create_proof_docs(proofs: list, claim_name: str, claim_uri_digest: str):
         proof_doc = {
             "claimUriDigest": claim_uri_digest,
             "supportsClaim": proof["supports_claim"],
-            "reviewedBy": "",
+            "reviewedBy": "semmet95",
             "uri": proof["uri"],
         }
 
