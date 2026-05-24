@@ -3,6 +3,7 @@
 import glob
 import json
 import os
+import requests
 import sys
 import yaml
 from urllib.parse import urlparse
@@ -70,14 +71,26 @@ def create_proof_docs(proofs: list, claim_name: str, claim_uri_digest: str):
     yaml.add_representer(str, quoted_str_representer)
 
     for proof in proofs:
+        # verify proof link is valid
+        proof_uri = proof.get("uri")
+        try:
+            response = requests.get(proof_uri, timeout=30)
+        except requests.RequestException as e:
+            print(f"Warning: skipping proof with invalid uri {proof_uri}: {e}", file=sys.stderr)
+            continue
+
+        if not response.ok:
+            print(f"Warning: skipping proof with invalid uri {proof_uri}: {response.status_code}", file=sys.stderr)
+            continue
+
         proof_doc = {
             "claimUriDigest": claim_uri_digest,
             "supportsClaim": proof["supports_claim"],
             "reviewedBy": "semmet95",
-            "uri": proof["uri"],
+            "uri": proof_uri,
         }
 
-        hostname = urlparse(proof["uri"]).hostname
+        hostname = urlparse(proof_uri).hostname
         filename = hostname.lower().replace(".", "_")
 
         if len(filename) > 30:
