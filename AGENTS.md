@@ -108,6 +108,7 @@ For both triggers, the workflow:
 - **PRs only add new files.** They never modify existing documents or the `oapi.yaml` schema.
 - **New documents must be valid before merge.** The PR validation workflow blocks merge if validation fails.
 - **Documents must live in the correct folder.** Files placed in the wrong folder are ignored by both scripts but may still trigger CI workflows.
+- **Proofs must be independent of the claim source.** When adding proof documents, ensure the proof and the claim it supports are not from the same source; source score rejects same-source proofs.
 - **Schema changes are rare and separate.** If `oapi.yaml` ever changes, all existing documents must be re-validated and updated in the same or an earlier PR.
 - **POST workflow requires secrets.** `API_BASE_URL` and `API_KEY` must be configured in repository settings for the merge workflow to succeed.
 
@@ -127,7 +128,8 @@ For both triggers, the workflow:
 2. Check that no existing files were modified (per repository policy).
 3. If the PR changes `oapi.yaml`, flag it — schema changes must be handled separately.
 4. Verify the document satisfies required fields and constraint bounds from the schema.
-5. Suggest running `python scripts/validate.py` if validation results are not visible in CI.
+5. For new proof documents, verify the proof and the claim it supports are not from the same source; source score rejects same-source proofs.
+6. Suggest running `python scripts/validate.py` if validation results are not visible in CI.
 
 ### When modifying scripts or CI
 
