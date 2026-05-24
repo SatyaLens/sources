@@ -176,11 +176,11 @@ def main() -> int:
         try:
             response = requests.get(doc_uri, timeout=30)
         except requests.RequestException as e:
-            _error(f"Warning: doc with invalid uri {doc_uri}: {e}", f)
+            _error("%s: doc with invalid uri %s: %s", f, doc_uri, e)
             failed = True
             continue
         if not response.ok:
-            _error(f"Warning: doc with invalid uri {doc_uri}: {response.status_code}", f)
+            _error("%s: doc with invalid uri %s: %s", f, doc_uri, response.status_code)
             failed = True
             continue
         
