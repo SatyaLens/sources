@@ -133,7 +133,6 @@ For both triggers, the workflow:
 
 ### When modifying scripts or CI
 
-- Keep `validate.py` dependency-free except for `pyyaml`, `jsonschema`, and `referencing`.
 - `validate.py` should default to scanning all tracked files when called without arguments.
 - `post_requests.py` must crash with a clear error if `API_BASE_URL` or `API_KEY` is unset.
 - Never add `git diff` logic into the Python scripts; the CI checkout already provides the correct working tree.
