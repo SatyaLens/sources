@@ -7,8 +7,6 @@ from pathlib import Path
 import traceback
 
 import requests
-from referencing.jsonschema import DRAFT202012
-from referencing import Registry, Resource
 
 # Shared utilities (try package import first, fallback to local module)
 try:
@@ -178,11 +176,11 @@ def main() -> int:
         try:
             response = requests.get(doc_uri, timeout=15)
         except requests.RequestException as e:
-            print(f"Warning: doc with invalid uri {doc_uri}: {e}", file=sys.stderr)
+            _error(f"Warning: doc with invalid uri {doc_uri}: {e}", f)
             failed = True
             continue
         if not response.ok:
-            print(f"Warning: doc with invalid uri {doc_uri}: {response.status_code}", file=sys.stderr)
+            _error(f"Warning: doc with invalid uri {doc_uri}: {response.status_code}", f)
             failed = True
             continue
         
