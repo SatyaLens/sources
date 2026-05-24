@@ -5,6 +5,8 @@ import sys
 import os
 from pathlib import Path
 import traceback
+
+import requests
 from referencing.jsonschema import DRAFT202012
 from referencing import Registry, Resource
 
@@ -168,6 +170,22 @@ def main() -> int:
             failed = True
             continue
 
+        doc_uri = data.get('uri')
+        if doc_uri is None:
+            _error("%s: Missing required 'uri' field", f)
+            failed = True
+            continue
+        try:
+            response = requests.get(doc_uri, timeout=15)
+        except requests.RequestException as e:
+            print(f"Warning: doc with invalid uri {doc_uri}: {e}", file=sys.stderr)
+            failed = True
+            continue
+        if not response.ok:
+            print(f"Warning: doc with invalid uri {doc_uri}: {response.status_code}", file=sys.stderr)
+            failed = True
+            continue
+        
         errors = validate(data, schema, spec)
         # Run extra validators defined via x-oapi-codegen-extra-tags
         extra_errors = run_extra_validations(data, schema)
