@@ -108,3 +108,25 @@ def get_claims(api_key: str, base_url: str):
         print(f"Error: failed to get all claims: {response.status_code}")
         return None
     return response.json()
+
+def get_proofs_by_claim(api_key: str, base_url: str, claim_uri_digest: str) -> list:
+    endpoint = f"{base_url}/api/v1/claim/{claim_uri_digest}/proofs"
+    headers = {"X-API-Key": api_key}
+
+    try:
+        response = requests.get(endpoint, headers=headers, timeout=90)
+    except requests.RequestException as e:
+        print(f"Error: failed to get proofs by claim from {endpoint}: {e}", file=sys.stderr)
+        return []
+
+    if response.status_code != 200:
+        print(f"Error: failed to get proofs for claim {claim_uri_digest}: {response.status_code}")
+        return []
+    return response.json()
+
+def is_claim_validated(api_key: str, base_url: str, claim: dict, proof_count: int) -> bool:
+    if claim.get("checked"):
+        claim_proofs = get_proofs_by_claim(api_key, base_url, claim["uriDigest"])
+        if len(claim_proofs) >= proof_count:
+            return True
+    return False
