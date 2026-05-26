@@ -137,7 +137,7 @@ def main():
     
     for claim in all_claims:
         if helper.is_claim_validated(API_KEY, API_BASE_URL, claim, MAX_PROOF_COUNT):
-            print(f"max proofs already ingested for claim {claim["uri"]}, skipping...")
+            print(f"max proofs already ingested for claim {claim['uri']}, skipping...")
             continue
 
         print(f"fetching proofs for claim {claim["uri"]}")
