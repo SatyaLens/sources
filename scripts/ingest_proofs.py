@@ -14,6 +14,7 @@ import openrouter
 API_BASE_URL = os.environ["API_BASE_URL"]
 API_KEY = os.environ["API_KEY"]
 
+MAX_PROOF_COUNT = int(os.getenv("MAX_PROOF_COUNT", "3"))
 CLAIM_VERIFICATION_SKILL_URL = os.getenv(
     "CLAIM_VERIFICATION_SKILL_URL",
     "https://raw.githubusercontent.com/semmet95/agent-skills/refs/heads/main/claim-verification/SKILL.md"
@@ -135,6 +136,10 @@ def main():
         sys.exit(1)
     
     for claim in all_claims:
+        if helper.is_claim_validated(API_KEY, API_BASE_URL, claim, MAX_PROOF_COUNT):
+            print(f"max proofs already ingested for claim {claim['uri']}, skipping...")
+            continue
+
         print(f"fetching proofs for claim {claim["uri"]}")
         # get proofs that either support or deny the claim conclusively
         req_content = (
