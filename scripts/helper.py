@@ -9,6 +9,7 @@ import sys
 import requests
 import yaml
 from typing import Tuple
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 def get_text_from_url(url: str) -> str:
@@ -130,3 +131,6 @@ def is_claim_validated(api_key: str, base_url: str, claim: dict, proof_count: in
         if len(claim_proofs) >= proof_count:
             return True
     return False
+
+def same_domain(url1: str, url2: str) -> bool:
+    return urlparse(url1).netloc.lower() == urlparse(url2).netloc.lower()
