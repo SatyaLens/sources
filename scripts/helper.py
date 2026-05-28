@@ -132,5 +132,20 @@ def is_claim_validated(api_key: str, base_url: str, claim: dict, proof_count: in
             return True
     return False
 
+def get_claim_by_digest(api_key: str, base_url: str, claim_uri_digest: str) -> dict | None:
+    endpoint = f"{base_url}/api/v1/claim/{claim_uri_digest}"
+    headers = {"X-API-Key": api_key}
+
+    try:
+        response = requests.get(endpoint, headers=headers, timeout=90)
+    except requests.RequestException as e:
+        print(f"Error: failed to get claim by digest from {endpoint}: {e}", file=sys.stderr)
+        return None
+
+    if response.status_code != 200:
+        print(f"Error: failed to get claim {claim_uri_digest}: {response.status_code}")
+        return None
+    return response.json()
+
 def same_domain(url1: str, url2: str) -> bool:
     return urlparse(url1).netloc.lower() == urlparse(url2).netloc.lower()
