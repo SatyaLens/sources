@@ -5,8 +5,10 @@ import sys
 import os
 from pathlib import Path
 import traceback
-
+from urllib.parse import urlparse
 import requests
+
+import helper
 
 # Shared utilities (try package import first, fallback to local module)
 try:
@@ -58,6 +60,19 @@ def _parse_validate_rules(s: str) -> list[str]:
         return list(s)
     return []
 
+def claim_proof_same_source(proof: dict) -> bool:
+    """Return True when a proof and its claim come from the same host."""
+    claim_uri_digest = proof["claimUriDigest"]
+    proof_uri = proof["uri"]
+    api_base_url = os.environ["API_BASE_URL"].rstrip("/")
+    api_key = os.environ["API_KEY"]
+
+    claim = helper.get_claim_by_digest(api_key, api_base_url, claim_uri_digest)
+    if not claim or not claim.get("uri"):
+        print(f"failed to fetch claim for digest: {claim_uri_digest}")
+        return False
+
+    return helper.same_domain(claim["uri"], proof_uri)
 
 def run_extra_validations(data: dict, schema: dict) -> list[str]:
     """Run x-oapi-codegen-extra-tags validators declared in the schema.
@@ -189,6 +204,8 @@ def main() -> int:
         extra_errors = run_extra_validations(data, schema)
         if extra_errors:
             errors.extend(extra_errors)
+        if folder == "proofs" and not errors and claim_proof_same_source(data):
+            errors.append("uri: proof and claim must not share the same host domain")
 
         if errors:
             _error("%s: %d validation error(s)", f, len(errors))

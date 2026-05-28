@@ -2,14 +2,19 @@
 """Helper functions for scripts"""
 
 import json
-import demjson3
 import os
 import re
 import sys
 import requests
 import yaml
 from typing import Tuple
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+
+try:
+    import demjson3
+except ImportError:
+    demjson3 = None
 
 def get_text_from_url(url: str) -> str:
     with urlopen(url, timeout=60) as r:
@@ -54,6 +59,10 @@ def cleanup_json_str(json_str: str) -> str:
 
     json_str = json_str.replace("`", "'")
     json_str = json_str.strip().replace("'", "\'")
+    if demjson3 is None:
+        print("Error decoding JSON string: demjson3 is not installed", file=sys.stderr)
+        return ""
+
     try:
         json_str = json.dumps(demjson3.decode(json_str))
     except Exception as e:
@@ -130,3 +139,23 @@ def is_claim_validated(api_key: str, base_url: str, claim: dict, proof_count: in
         if len(claim_proofs) >= proof_count:
             return True
     return False
+
+def get_claim_by_digest(api_key: str, base_url: str, claim_uri_digest: str) -> dict | None:
+    endpoint = f"{base_url}/api/v1/claim/{claim_uri_digest}"
+    headers = {"X-API-Key": api_key}
+
+    try:
+        response = requests.get(endpoint, headers=headers, timeout=90)
+    except requests.RequestException as e:
+        print(f"Error: failed to get claim by digest from {endpoint}: {e}", file=sys.stderr)
+        return None
+
+    if response.status_code != 200:
+        print(f"Error: failed to get claim {claim_uri_digest}: {response.status_code}")
+        return None
+    return response.json()
+
+def same_domain(url1: str, url2: str) -> bool:
+    host1 = (urlparse(url1).hostname or "").lower()
+    host2 = (urlparse(url2).hostname or "").lower()
+    return bool(host1 and host2) and host1 == host2

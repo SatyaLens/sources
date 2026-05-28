@@ -48,10 +48,15 @@ def get_proof_docs(proofs_dir: str):
     
     return proofs_array
 
-def get_new_proofs(all_proof_docs, new_proofs):
+def get_new_proofs(all_proof_docs, new_proofs, claim_url: str):
     unique_proofs = []
 
     for proof in new_proofs:
+        # skip proofs that share the same origin as the claim
+        if helper.same_domain(claim_url, proof["uri"]):
+            print(f"Warning: proof {proof['uri']} and claim {claim_url} are from the same source, skipping...", file=sys.stderr)
+            continue
+
         new_proof = True
         for proof_doc in all_proof_docs:
             if proof["uri"] == proof_doc["uri"]:
@@ -63,9 +68,6 @@ def get_new_proofs(all_proof_docs, new_proofs):
     return unique_proofs
 
 def create_proof_docs(proofs: list, claim_name: str, claim_uri_digest: str):
-    proof_input_schema = helper.get_oapi_spec()['components']['schemas']['ProofInput']
-    proof_example = proof_input_schema.get('example')
-
     # Custom representer to force double quotes around strings
     def quoted_str_representer(dumper, data):
         return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='"')
@@ -163,7 +165,7 @@ def main():
             continue
 
         # list of new proofs to be ingested
-        new_unique_proofs = get_new_proofs(all_proof_docs, claim_proofs_list)
+        new_unique_proofs = get_new_proofs(all_proof_docs, claim_proofs_list, claim["uri"])
         create_proof_docs(new_unique_proofs, claim["title"], claim["uriDigest"])
 
 if __name__ == "__main__":
