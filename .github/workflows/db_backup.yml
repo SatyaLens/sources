@@ -12,7 +12,10 @@ jobs:
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
 
       - name: Run pg_dump
         env:
@@ -20,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           FILENAME="backup-$(date -u +'%Y-%m-%d').sql.gz"
-          pg_dump "$DATABASE_URL" \
+          /usr/lib/postgresql/18/bin/pg_dump "$DATABASE_URL" \
             --no-owner \
             --no-privileges \
             --format=plain \
@@ -28,7 +31,7 @@ jobs:
           echo "BACKUP_FILE=$FILENAME" >> "$GITHUB_ENV"
 
       - name: Upload backup artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: postgres-backup-${{ github.run_number }}
           path: ${{ env.BACKUP_FILE }}
