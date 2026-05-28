@@ -2,7 +2,6 @@
 """Helper functions for scripts"""
 
 import json
-import demjson3
 import os
 import re
 import sys
@@ -11,6 +10,11 @@ import yaml
 from typing import Tuple
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+
+try:
+    import demjson3
+except ImportError:
+    demjson3 = None
 
 def get_text_from_url(url: str) -> str:
     with urlopen(url, timeout=60) as r:
@@ -55,6 +59,10 @@ def cleanup_json_str(json_str: str) -> str:
 
     json_str = json_str.replace("`", "'")
     json_str = json_str.strip().replace("'", "\'")
+    if demjson3 is None:
+        print("Error decoding JSON string: demjson3 is not installed", file=sys.stderr)
+        return ""
+
     try:
         json_str = json.dumps(demjson3.decode(json_str))
     except Exception as e:
@@ -148,4 +156,6 @@ def get_claim_by_digest(api_key: str, base_url: str, claim_uri_digest: str) -> d
     return response.json()
 
 def same_domain(url1: str, url2: str) -> bool:
-    return urlparse(url1).netloc.lower() == urlparse(url2).netloc.lower()
+    host1 = (urlparse(url1).hostname or "").lower()
+    host2 = (urlparse(url2).hostname or "").lower()
+    return bool(host1 and host2) and host1 == host2
