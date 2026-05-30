@@ -12,10 +12,10 @@ import helper
 
 # Shared utilities (try package import first, fallback to local module)
 try:
-    from scripts.common import load_oapi, load_doc
+    from scripts.helper import load_oapi, load_doc
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
-    from common import load_oapi, load_doc
+    from helper import load_oapi, load_doc
 
 # Use jsonschema's Draft202012Validator for validation
 from jsonschema import Draft202012Validator

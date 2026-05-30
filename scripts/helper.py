@@ -7,7 +7,7 @@ import re
 import sys
 import requests
 import yaml
-from typing import Tuple
+from typing import Tuple, Dict, Any
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -175,3 +175,36 @@ def same_domain(url1: str, url2: str) -> bool:
     host1 = (urlparse(url1).hostname or "").lower()
     host2 = (urlparse(url2).hostname or "").lower()
     return bool(host1 and host2) and host1 == host2
+
+def get_jwt_token(base_url: str, client_id: str) -> str|None:
+    endpoint = f"{base_url}/auth/token"
+    headers = {
+        "Client-ID": client_id,
+        "Content-Type": "application/json"
+    }
+
+    status, body = post_request(endpoint=endpoint, headers=headers, payload={}, timeout=90)
+    if status != 200:
+        print(f"Error: failed to get JWT token: {status}")
+        return None
+
+    try:
+        data = json.loads(body)
+    except Exception as e:
+        print(f"Failed to parse auth token request response {body}: {e}", file=sys.stderr)
+        return None
+
+    return data.get("token")
+
+def load_oapi(path: str) -> Dict[str, Any]:
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
+def load_doc(path: str) -> Dict[str, Any]:
+    with open(path) as f:
+        content = f.read()
+    try:
+        return yaml.safe_load(content)
+    except yaml.YAMLError:
+        return json.loads(content)
