@@ -16,6 +16,8 @@ try:
 except ImportError:
     demjson3 = None
 
+CLIENT_ID = "gh-workflow"
+
 def get_text_from_url(url: str) -> str:
     with urlopen(url, timeout=60) as r:
         return r.read().decode("utf-8")
@@ -31,11 +33,11 @@ def get_oapi_spec():
     with open(oapi_path, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
-def get_sources(api_key: str, base_url: str):
+def get_sources(auth_token: str, base_url: str):
     endpoint = f"{base_url}/api/v1/sources"
     headers = {
-        "Client-ID": "gh-workflow",
-        "X-API-Key": api_key
+        "Client-ID": CLIENT_ID,
+        "Authorization": f"Bearer {auth_token}"
     }
 
     try:
@@ -99,22 +101,22 @@ def post_request(endpoint: str, headers: dict, payload: dict, timeout: int, meth
 
     return status, body
 
-def patch_sources(api_key: str, base_url: str, uriDigest: str, body: dict):
+def patch_sources(auth_token: str, base_url: str, uriDigest: str, body: dict):
     endpoint = f"{base_url}/api/v1/source/{uriDigest}"
     headers = {
-        "Client-ID": "gh-workflow",
-        "X-API-Key": api_key,
+        "Client-ID": CLIENT_ID,
+        "Authorization": f"Bearer {auth_token}",
         "Content-Type": "application/json"
     }
     status, _ = post_request(endpoint, headers, body, timeout=90, method="PATCH")
     if status != 204:
         print(f"Error: failed to patch source {uriDigest}: {status}", file=sys.stderr)
 
-def get_claims(api_key: str, base_url: str):
+def get_claims(auth_token: str, base_url: str):
     endpoint = f"{base_url}/api/v1/claims"
     headers = {
-        "Client-ID": "gh-workflow",
-        "X-API-Key": api_key
+        "Client-ID": CLIENT_ID,
+        "Authorization": f"Bearer {auth_token}"
     }
 
     try:
@@ -128,11 +130,11 @@ def get_claims(api_key: str, base_url: str):
         return None
     return response.json()
 
-def get_proofs_by_claim(api_key: str, base_url: str, claim_uri_digest: str) -> list:
+def get_proofs_by_claim(auth_token: str, base_url: str, claim_uri_digest: str) -> list:
     endpoint = f"{base_url}/api/v1/claim/{claim_uri_digest}/proofs"
     headers = {
-        "Client-ID": "gh-workflow",
-        "X-API-Key": api_key
+        "Client-ID": CLIENT_ID,
+        "Authorization": f"Bearer {auth_token}"
     }
 
     try:
@@ -153,11 +155,11 @@ def is_claim_validated(api_key: str, base_url: str, claim: dict, proof_count: in
             return True
     return False
 
-def get_claim_by_digest(api_key: str, base_url: str, claim_uri_digest: str) -> dict | None:
+def get_claim_by_digest(auth_token: str, base_url: str, claim_uri_digest: str) -> dict | None:
     endpoint = f"{base_url}/api/v1/claim/{claim_uri_digest}"
     headers = {
-        "Client-ID": "gh-workflow",
-        "X-API-Key": api_key
+        "Client-ID": CLIENT_ID,
+        "Authorization": f"Bearer {auth_token}"
     }
 
     try:
@@ -199,7 +201,6 @@ def get_jwt_token(base_url: str, client_id: str) -> str|None:
 def load_oapi(path: str) -> Dict[str, Any]:
     with open(path) as f:
         return yaml.safe_load(f)
-
 
 def load_doc(path: str) -> Dict[str, Any]:
     with open(path) as f:

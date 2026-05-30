@@ -16,10 +16,10 @@ import traceback
 
 # Shared utilities (try package import first, fallback to local module)
 try:
-    from scripts.helper import load_oapi, load_doc
+    from scripts.helper import load_oapi, load_doc, CLIENT_ID
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
-    from helper import load_oapi, load_doc
+    from helper import load_oapi, load_doc, CLIENT_ID
 
 # folder -> schema name
 SCHEMA_MAP = {
@@ -46,12 +46,12 @@ def extract_post_paths(spec: dict) -> dict[str, str]:
 
     return paths
 
-def post(url: str, data: dict, api_key: str, timeout: float = 90.0) -> tuple[int, str]:
+def post(url: str, data: dict, auth_token: str, timeout: float = 90.0) -> tuple[int, str]:
     payload = json.dumps(data).encode()
     headers = {
-        "Client-ID": "gh-workflow",
+        "Client-ID": CLIENT_ID,
         "Content-Type": "application/json",
-        "X-API-Key": api_key,
+        "Authorization": f"Bearer {auth_token}"
     }
 
     req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
