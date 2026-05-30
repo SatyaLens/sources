@@ -14,7 +14,7 @@ jobs:
     steps:
     - name: Fetch auth token
       run: |
-        TOKEN=$(curl -s -X POST \
+        TOKEN=$(curl -sf -X POST \
                 -H "Client-ID: gh-workflow" \
                 '${{ vars.API_BASE_URL }}/auth/token' \
                 | jq -r .token)

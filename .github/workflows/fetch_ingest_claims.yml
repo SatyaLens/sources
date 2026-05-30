@@ -17,7 +17,6 @@ jobs:
       GH_TOKEN: ${{ secrets.GH_TOKEN }}
       TOP_SOURCES_LIST: ${{ vars.TOP_SOURCES_LIST }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      API_KEY: ${{ secrets.API_KEY }}
       API_BASE_URL: ${{ vars.API_BASE_URL }}
       NEWSDATA_API_BASE_URL: ${{ vars.NEWSDATA_API_BASE_URL }}
       NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}

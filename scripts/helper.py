@@ -199,11 +199,11 @@ def get_jwt_token(base_url: str, client_id: str) -> str|None:
     return data.get("token")
 
 def load_oapi(path: str) -> Dict[str, Any]:
-    with open(path) as f:
+    with open(path, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
 def load_doc(path: str) -> Dict[str, Any]:
-    with open(path) as f:
+    with open(path, 'r', encoding='utf-8') as f:
         content = f.read()
     try:
         return yaml.safe_load(content)
