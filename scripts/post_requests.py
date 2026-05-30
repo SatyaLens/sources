@@ -49,6 +49,7 @@ def extract_post_paths(spec: dict) -> dict[str, str]:
 def post(url: str, data: dict, api_key: str, timeout: float = 90.0) -> tuple[int, str]:
     payload = json.dumps(data).encode()
     headers = {
+        "Client-ID": "gh-workflow",
         "Content-Type": "application/json",
         "X-API-Key": api_key,
     }

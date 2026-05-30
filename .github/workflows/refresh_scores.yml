@@ -17,7 +17,8 @@ jobs:
         curl -f -X 'POST' \
           '${{ vars.API_BASE_URL }}/api/v1/claims/verify' \
           -H 'accept: */*' \
-          -H "X-API-Key: ${{ secrets.API_KEY }}" \
+          -H 'Client-ID: gh-workflow' \
+          -H "X-API-Key: ${{ secrets.TOKEN }}" \
           -d ''
 
     - name: Refresh source scores
@@ -25,5 +26,6 @@ jobs:
         curl -f -X 'POST' \
           '${{ vars.API_BASE_URL }}/api/v1/sources/scores' \
           -H 'accept: */*' \
-          -H "X-API-Key: ${{ secrets.API_KEY }}" \
+          -H 'Client-ID: gh-workflow' \
+          -H "X-API-Key: ${{ secrets.TOKEN }}" \
           -d ''

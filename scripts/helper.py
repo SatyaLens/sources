@@ -33,7 +33,10 @@ def get_oapi_spec():
 
 def get_sources(api_key: str, base_url: str):
     endpoint = f"{base_url}/api/v1/sources"
-    headers = {"X-API-Key": api_key}
+    headers = {
+        "Client-ID": "gh-workflow",
+        "X-API-Key": api_key
+    }
 
     try:
         response = requests.get(endpoint, headers=headers, timeout=90)
@@ -98,14 +101,21 @@ def post_request(endpoint: str, headers: dict, payload: dict, timeout: int, meth
 
 def patch_sources(api_key: str, base_url: str, uriDigest: str, body: dict):
     endpoint = f"{base_url}/api/v1/source/{uriDigest}"
-    headers = {"X-API-Key": api_key, "Content-Type": "application/json"}
+    headers = {
+        "Client-ID": "gh-workflow",
+        "X-API-Key": api_key,
+        "Content-Type": "application/json"
+    }
     status, _ = post_request(endpoint, headers, body, timeout=90, method="PATCH")
     if status != 204:
         print(f"Error: failed to patch source {uriDigest}: {status}", file=sys.stderr)
 
 def get_claims(api_key: str, base_url: str):
     endpoint = f"{base_url}/api/v1/claims"
-    headers = {"X-API-Key": api_key}
+    headers = {
+        "Client-ID": "gh-workflow",
+        "X-API-Key": api_key
+    }
 
     try:
         response = requests.get(endpoint, headers=headers, timeout=90)
@@ -120,7 +130,10 @@ def get_claims(api_key: str, base_url: str):
 
 def get_proofs_by_claim(api_key: str, base_url: str, claim_uri_digest: str) -> list:
     endpoint = f"{base_url}/api/v1/claim/{claim_uri_digest}/proofs"
-    headers = {"X-API-Key": api_key}
+    headers = {
+        "Client-ID": "gh-workflow",
+        "X-API-Key": api_key
+    }
 
     try:
         response = requests.get(endpoint, headers=headers, timeout=90)
@@ -142,7 +155,10 @@ def is_claim_validated(api_key: str, base_url: str, claim: dict, proof_count: in
 
 def get_claim_by_digest(api_key: str, base_url: str, claim_uri_digest: str) -> dict | None:
     endpoint = f"{base_url}/api/v1/claim/{claim_uri_digest}"
-    headers = {"X-API-Key": api_key}
+    headers = {
+        "Client-ID": "gh-workflow",
+        "X-API-Key": api_key
+    }
 
     try:
         response = requests.get(endpoint, headers=headers, timeout=90)
