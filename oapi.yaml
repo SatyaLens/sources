@@ -5,13 +5,45 @@ info:
   version: 0.1.0
 
 servers:
-  - url: /
-    description: Current host
+- url: /
+  description: Current host
 
 security:
-  - ApiKeyAuth: []
+- BearerAuth: []
 
 paths:
+  /auth/token:
+    post:
+      summary: Obtain API token
+      description: Authenticates a user and returns an API token for subsequent requests
+      tags:
+      - authentication
+      security: []
+      operationId: getAuthToken
+      parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
+      responses:
+        200:
+          description: Authentication successful, token returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: API token to be used in the Authorization header for authenticated requests
+        401:
+          description: Authentication failed, invalid client ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+
   /api/v1/sources:
     get:
       summary: Get all sources
@@ -19,6 +51,8 @@ paths:
       tags:
       - sources
       operationId: getSources
+      parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       responses:
         200:
           description: List of sources retrieved successfully
@@ -36,6 +70,8 @@ paths:
       tags:
       - sources
       operationId: updateAllScores
+      parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       responses:
         202:
           description: Score update process initiated successfully
@@ -49,6 +85,8 @@ paths:
       tags:
       - source
       operationId: postSource
+      parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       requestBody:
         required: true
         content:
@@ -75,6 +113,7 @@ paths:
       - source
       operationId: getSource
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -95,9 +134,10 @@ paths:
       summary: Update source fields
       description: Partially updates a source. Only provided fields will be updated. Empty values are not allowed.
       tags:
-        - source
+      - source
       operationId: patchSource
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -125,6 +165,7 @@ paths:
       - source
       operationId: deleteSource
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -145,6 +186,7 @@ paths:
       - claims
       operationId: getClaimsBySourceDigest
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -169,6 +211,7 @@ paths:
       - claims
       operationId: getClaims
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - name: checked
         in: query
         schema:
@@ -193,6 +236,8 @@ paths:
       tags:
       - claims
       operationId: verifyAllClaims
+      parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       responses:
         202:
           description: Claim verification process initiated successfully
@@ -206,6 +251,8 @@ paths:
       tags:
       - claim
       operationId: postClaim
+      parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       requestBody:
         required: true
         content:
@@ -228,6 +275,7 @@ paths:
       - claim
       operationId: getClaim
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -251,6 +299,7 @@ paths:
       - claim
       operationId: deleteClaim
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -270,6 +319,7 @@ paths:
         - claim
       operationId: patchClaim
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -297,6 +347,7 @@ paths:
       - claim
       operationId: verifyClaim
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -325,6 +376,7 @@ paths:
       - proofs
       operationId: getProofsByClaimDigest
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -348,6 +400,8 @@ paths:
       tags:
       - proofs
       operationId: getProofs
+      parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       responses:
         200:
           description: List of proofs retrieved successfully
@@ -365,6 +419,8 @@ paths:
       tags:
       - proof
       operationId: postProof
+      parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       requestBody:
         required: true
         content:
@@ -387,6 +443,7 @@ paths:
       - proof
       operationId: getProof
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -410,6 +467,7 @@ paths:
       - proof
       operationId: deleteProof
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -426,9 +484,10 @@ paths:
       summary: Update proof reviewer
       description: Updates the reviewer identifier for a proof. Empty values and spaces are not allowed.
       tags:
-        - proof
+      - proof
       operationId: patchProof
       parameters:
+      - $ref: '#/components/parameters/ClientIDHeader'
       - in: path
         name: uriDigest
         required: true
@@ -451,10 +510,20 @@ paths:
 
 components:
   securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  parameters:
+    ClientIDHeader:
+      name: Client-ID
       in: header
-      name: X-API-Key
+      required: true
+      schema:
+        type: string
+        default: swagger-ui
+      description: Client identifier for authentication
 
   schemas:
     SourceInput:
@@ -556,6 +625,7 @@ components:
           example: "New York Times"
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null"
         score:
           type: number
           format: double
@@ -563,37 +633,42 @@ components:
           example: 0.85
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null;default:0;check:chk_sources_score_range,score >= 0 AND score <= 1"
         uriDigest:
           type: string
           description: SHA-256 hash of the URI, used as primary key
           example: "8649a4126fb4fc9a750f432b729c8477398cf28ca241403b2cd36a6dc841f441"
           x-oapi-codegen-extra-tags:
             binding: required
-            gorm: primaryKey
+            gorm: "primaryKey;size:64"
         summary:
           type: string
           description: Brief description of the source
           example: "American daily newspaper"
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null;type:text"
         tags:
           type: string
           description: Comma-separated categorization tags
           example: "news,media,journalism"
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null;type:text"
         uri:
           type: string
           description: Unique HTTPS URL of the source
           example: "https://www.nytimes.com"
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null;uniqueIndex:idx_sources_uri"
         domainUrlNewsData:
           type: string
           description: Domain url corresponding to newsdata.io `domainurl` parameter
           example: "timesofindia.indiatimes.com,theguardian.com"
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "type:text"
 
     CreateSourceResponse:
       type: object
@@ -669,31 +744,39 @@ components:
           example: "8649a4126fb4fc9a750f432b729c8477398cf28ca241403b2cd36a6dc841f441"
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null;size:64;index:idx_claims_source_uri_digest"
+        source:
+          $ref: '#/components/schemas/Source'
+          x-oapi-codegen-extra-tags:
+            gorm: "foreignKey:sourceUriDigest;references:uriDigest"
         summary:
           type: string
           description: Detailed description of the claim
           example: "The unemployment rate decreased by 2% in Q4 2024"
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null;type:text"
         title:
           type: string
           description: Short title of the claim
           example: "Unemployment Rate Decrease"
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null"
         uri:
           type: string
           description: Unique HTTPS URL of the claim
           example: "https://www.nytimes.com/2024/unemployment-report"
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null;uniqueIndex:idx_claims_uri"
         uriDigest:
           type: string
           description: SHA-256 hash of the URI, used as primary key
           example: "369d9f3047c66c2e9b5e39693d9de3664b61a36a2d77cd0484fade042350d4a1"
           x-oapi-codegen-extra-tags:
             binding: required
-            gorm: primaryKey
+            gorm: "primaryKey;size:64"
         checked:
           type: boolean
           default: false
@@ -701,6 +784,7 @@ components:
           example: true
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null;default:false;index:idx_claims_source_uri_digest"
         validity:
           type: boolean
           default: false
@@ -708,6 +792,7 @@ components:
           example: true
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null;default:false"
 
     ClaimPatchInput:
       type: object
@@ -786,31 +871,38 @@ components:
           example: "369d9f3047c66c2e9b5e39693d9de3664b61a36a2d77cd0484fade042350d4a1"
           x-oapi-codegen-extra-tags:
             binding: required
+        claim:
+          $ref: '#/components/schemas/Claim'
+          x-oapi-codegen-extra-tags:
+            gorm: "foreignKey:claimUriDigest;references:uriDigest"
         supportsClaim:
           type: boolean
           description: Whether this proof supports (true) or refutes (false) the claim
           example: true
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null;default:false"
         reviewedBy:
           type: string
           description: Identifier of the reviewer
           example: "fact-checker-001"
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null"
         uri:
           type: string
           description: Unique HTTPS URL of the proof source
           example: "https://bls.gov/unemployment-data-q4-2024"
           x-oapi-codegen-extra-tags:
             binding: required
+            gorm: "not null;uniqueIndex:idx_proofs_uri"
         uriDigest:
           type: string
           description: SHA-256 hash of the URI, used as primary key
           example: "6f2479b5249b1c27c4935da5594bc72bb0b9e59e704aea9af50780bc6178c357"
           x-oapi-codegen-extra-tags:
             binding: required
-            gorm: primaryKey
+            gorm: "primaryKey;size:64"
 
     ProofPatchInput:
       type: object
