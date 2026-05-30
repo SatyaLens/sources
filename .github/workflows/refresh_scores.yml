@@ -12,18 +12,26 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     steps:
+    - name: Fetch auth token
+      run: |
+        TOKEN=$(curl -sf -X POST \
+                -H "Client-ID: gh-workflow" \
+                '${{ vars.API_BASE_URL }}/auth/token' \
+                | jq -r .token)
+        echo "TOKEN=$TOKEN" >> $GITHUB_ENV
     - name: Verify claims
       run: |
         curl -f -X 'POST' \
           '${{ vars.API_BASE_URL }}/api/v1/claims/verify' \
           -H 'accept: */*' \
-          -H "X-API-Key: ${{ secrets.API_KEY }}" \
+          -H 'Client-ID: gh-workflow' \
+          -H "Authorization: Bearer $TOKEN" \
           -d ''
-
     - name: Refresh source scores
       run: |
         curl -f -X 'POST' \
           '${{ vars.API_BASE_URL }}/api/v1/sources/scores' \
           -H 'accept: */*' \
-          -H "X-API-Key: ${{ secrets.API_KEY }}" \
+          -H 'Client-ID: gh-workflow' \
+          -H "Authorization: Bearer $TOKEN" \
           -d ''

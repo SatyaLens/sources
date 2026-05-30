@@ -54,4 +54,3 @@ jobs:
         run: python scripts/post_requests.py
         env:
           API_BASE_URL: ${{ vars.API_BASE_URL }}
-          API_KEY: ${{ secrets.API_KEY }}

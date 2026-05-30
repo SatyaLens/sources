@@ -3,7 +3,6 @@
 
 Requires environment variables:
     API_BASE_URL    API server base URL
-    API_KEY         API token for authentication
 """
 
 import json
@@ -16,10 +15,10 @@ import traceback
 
 # Shared utilities (try package import first, fallback to local module)
 try:
-    from scripts.common import load_oapi, load_doc
+    from scripts.helper import load_oapi, load_doc, CLIENT_ID, get_jwt_token
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
-    from common import load_oapi, load_doc
+    from helper import load_oapi, load_doc, CLIENT_ID, get_jwt_token
 
 # folder -> schema name
 SCHEMA_MAP = {
@@ -46,11 +45,12 @@ def extract_post_paths(spec: dict) -> dict[str, str]:
 
     return paths
 
-def post(url: str, data: dict, api_key: str, timeout: float = 90.0) -> tuple[int, str]:
+def post(url: str, data: dict, auth_token: str, timeout: float = 90.0) -> tuple[int, str]:
     payload = json.dumps(data).encode()
     headers = {
+        "Client-ID": CLIENT_ID,
         "Content-Type": "application/json",
-        "X-API-Key": api_key,
+        "Authorization": f"Bearer {auth_token}"
     }
 
     req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
@@ -77,14 +77,14 @@ def main() -> int:
         traceback.print_exc(file=sys.stderr)
 
     base_url = os.environ.get("API_BASE_URL", "").rstrip("/")
-    api_key = os.environ.get("API_KEY", "")
-
     if not base_url:
         _error("API_BASE_URL environment variable is not set")
         return 1
-    if not api_key:
-        _error("API_KEY environment variable is not set")
-        return 1
+    
+    auth_token = get_jwt_token(base_url, CLIENT_ID)
+    if auth_token is None:
+        print(f"Error: failed to fetch api auth token", file=sys.stderr)
+        sys.exit(1)
 
     files = [f for f in os.environ.get("ADDED_FILES", "").splitlines() if f.strip()]
     if not files:
@@ -150,7 +150,7 @@ def main() -> int:
 
         _info("Posting %s -> %s", str(norm_path), url)
         try:
-            status, body = post(url, data, api_key)
+            status, body = post(url, data, auth_token)
         except Exception as e:
             _exception("%s: Request failed: %s", str(norm_path), e)
             failed = True

@@ -55,28 +55,27 @@ python scripts/validate.py sources/source1.yaml
 4. For each file:
    - Loads the YAML document.
    - Constructs the full URL as `API_BASE_URL + path` (e.g., `https://api.example.com/v1/source`).
-   - POSTs the document as JSON with `X-API-Key: API_KEY`.
+   - Sends the document as JSON using an `Authorization: Bearer <token>` header. The script obtains a short-lived JWT by POSTing to `${API_BASE_URL}/auth/token` with the header `Client-ID: gh-workflow`.
 5. Reports pass/fail per file with HTTP status and response body.
 
 ### Environment Variables
 
 | Variable | Required | Source |
 |----------|----------|--------|
-| `API_BASE_URL` | Yes | GitHub Secret `secrets.API_BASE_URL` |
-| `API_KEY` | Yes | GitHub Secret `secrets.API_KEY` |
+| `API_BASE_URL` | Yes | GitHub repository variable `vars.API_BASE_URL` |
+| `ADDED_FILES` | Yes | CI workflow computes this from `git diff` |
 | `ADDED_FILES` | Yes | CI workflow computes this from `git diff` |
 
-The script **exits with code 1 immediately** if `API_BASE_URL` or `API_KEY` is missing.
+The script **exits with code 1 immediately** if `API_BASE_URL` is missing.
 
 ### Running Locally
 
 ```bash
 # Set required env vars
 export API_BASE_URL="https://api.example.com/v1"
-export API_KEY="sk_live_abc123"
 export ADDED_FILES="sources/source1.yaml"
 
-# POST the document
+# POST the document (the script will fetch a JWT from $API_BASE_URL/auth/token)
 python scripts/post_requests.py
 ```
 
@@ -110,7 +109,7 @@ For both triggers, the workflow:
 - **Documents must live in the correct folder.** Files placed in the wrong folder are ignored by both scripts but may still trigger CI workflows.
 - **Proofs must be independent of the claim source.** When adding proof documents, ensure the proof and the claim it supports are not from the same source; source score rejects same-source proofs.
 - **Schema changes are rare and separate.** If `oapi.yaml` ever changes, all existing documents must be re-validated and updated in the same or an earlier PR.
-- **POST workflow requires secrets.** `API_BASE_URL` and `API_KEY` must be configured in repository settings for the merge workflow to succeed.
+- **POST workflow requirements.** The workflows expect the repository variable `API_BASE_URL` to be configured (`vars.API_BASE_URL`). The CI jobs and scripts obtain a short-lived JWT from `${API_BASE_URL}/auth/token` at runtime; an `API_KEY` secret is no longer required for posting documents.
 
 ## Instructions for AI Agents
 
@@ -134,10 +133,11 @@ For both triggers, the workflow:
 ### When modifying scripts or CI
 
 - `validate.py` should default to scanning all tracked files when called without arguments.
-- `post_requests.py` must crash with a clear error if `API_BASE_URL` or `API_KEY` is unset.
+- `post_requests.py` must crash with a clear error if `API_BASE_URL` is unset.
 - Never add `git diff` logic into the Python scripts; the CI checkout already provides the correct working tree.
 - Maintain the folder-to-schema mapping in a single dictionary at the top of both scripts.
 - Keep the `oapi.yaml` `paths` section in sync with the schema `$ref` mappings used by the scripts.
+ - Scripts that call API endpoints (for example `post_requests.py`, `validate.py`, and `ingest_*.py`) obtain a short-lived JWT from `${API_BASE_URL}/auth/token` at runtime and use it via the `Authorization: Bearer <token>` header.
 
 ## Schema & API Reference
 

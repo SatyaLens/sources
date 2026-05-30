@@ -7,7 +7,7 @@ import re
 import sys
 import requests
 import yaml
-from typing import Tuple
+from typing import Tuple, Dict, Any
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -15,6 +15,8 @@ try:
     import demjson3
 except ImportError:
     demjson3 = None
+
+CLIENT_ID = "gh-workflow"
 
 def get_text_from_url(url: str) -> str:
     with urlopen(url, timeout=60) as r:
@@ -31,9 +33,12 @@ def get_oapi_spec():
     with open(oapi_path, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
-def get_sources(api_key: str, base_url: str):
+def get_sources(auth_token: str, base_url: str):
     endpoint = f"{base_url}/api/v1/sources"
-    headers = {"X-API-Key": api_key}
+    headers = {
+        "Client-ID": CLIENT_ID,
+        "Authorization": f"Bearer {auth_token}"
+    }
 
     try:
         response = requests.get(endpoint, headers=headers, timeout=90)
@@ -96,16 +101,23 @@ def post_request(endpoint: str, headers: dict, payload: dict, timeout: int, meth
 
     return status, body
 
-def patch_sources(api_key: str, base_url: str, uriDigest: str, body: dict):
+def patch_sources(auth_token: str, base_url: str, uriDigest: str, body: dict):
     endpoint = f"{base_url}/api/v1/source/{uriDigest}"
-    headers = {"X-API-Key": api_key, "Content-Type": "application/json"}
+    headers = {
+        "Client-ID": CLIENT_ID,
+        "Authorization": f"Bearer {auth_token}",
+        "Content-Type": "application/json"
+    }
     status, _ = post_request(endpoint, headers, body, timeout=90, method="PATCH")
     if status != 204:
         print(f"Error: failed to patch source {uriDigest}: {status}", file=sys.stderr)
 
-def get_claims(api_key: str, base_url: str):
+def get_claims(auth_token: str, base_url: str):
     endpoint = f"{base_url}/api/v1/claims"
-    headers = {"X-API-Key": api_key}
+    headers = {
+        "Client-ID": CLIENT_ID,
+        "Authorization": f"Bearer {auth_token}"
+    }
 
     try:
         response = requests.get(endpoint, headers=headers, timeout=90)
@@ -118,9 +130,12 @@ def get_claims(api_key: str, base_url: str):
         return None
     return response.json()
 
-def get_proofs_by_claim(api_key: str, base_url: str, claim_uri_digest: str) -> list:
+def get_proofs_by_claim(auth_token: str, base_url: str, claim_uri_digest: str) -> list:
     endpoint = f"{base_url}/api/v1/claim/{claim_uri_digest}/proofs"
-    headers = {"X-API-Key": api_key}
+    headers = {
+        "Client-ID": CLIENT_ID,
+        "Authorization": f"Bearer {auth_token}"
+    }
 
     try:
         response = requests.get(endpoint, headers=headers, timeout=90)
@@ -133,16 +148,19 @@ def get_proofs_by_claim(api_key: str, base_url: str, claim_uri_digest: str) -> l
         return []
     return response.json()
 
-def is_claim_validated(api_key: str, base_url: str, claim: dict, proof_count: int) -> bool:
+def is_claim_validated(auth_token: str, base_url: str, claim: dict, proof_count: int) -> bool:
     if claim.get("checked"):
-        claim_proofs = get_proofs_by_claim(api_key, base_url, claim["uriDigest"])
+        claim_proofs = get_proofs_by_claim(auth_token, base_url, claim["uriDigest"])
         if len(claim_proofs) >= proof_count:
             return True
     return False
 
-def get_claim_by_digest(api_key: str, base_url: str, claim_uri_digest: str) -> dict | None:
+def get_claim_by_digest(auth_token: str, base_url: str, claim_uri_digest: str) -> dict | None:
     endpoint = f"{base_url}/api/v1/claim/{claim_uri_digest}"
-    headers = {"X-API-Key": api_key}
+    headers = {
+        "Client-ID": CLIENT_ID,
+        "Authorization": f"Bearer {auth_token}"
+    }
 
     try:
         response = requests.get(endpoint, headers=headers, timeout=90)
@@ -159,3 +177,35 @@ def same_domain(url1: str, url2: str) -> bool:
     host1 = (urlparse(url1).hostname or "").lower()
     host2 = (urlparse(url2).hostname or "").lower()
     return bool(host1 and host2) and host1 == host2
+
+def get_jwt_token(base_url: str, client_id: str) -> str|None:
+    endpoint = f"{base_url}/auth/token"
+    headers = {
+        "Client-ID": client_id,
+        "Content-Type": "application/json"
+    }
+
+    status, body = post_request(endpoint=endpoint, headers=headers, payload={}, timeout=90)
+    if status != 200:
+        print(f"Error: failed to get JWT token: {status}")
+        return None
+
+    try:
+        data = json.loads(body)
+    except Exception as e:
+        print(f"Failed to parse auth token request response {body}: {e}", file=sys.stderr)
+        return None
+
+    return data.get("token")
+
+def load_oapi(path: str) -> Dict[str, Any]:
+    with open(path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
+
+def load_doc(path: str) -> Dict[str, Any]:
+    with open(path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    try:
+        return yaml.safe_load(content)
+    except yaml.YAMLError:
+        return json.loads(content)

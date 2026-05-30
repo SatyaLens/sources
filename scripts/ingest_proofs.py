@@ -12,7 +12,6 @@ import helper
 import openrouter
 
 API_BASE_URL = os.environ["API_BASE_URL"]
-API_KEY = os.environ["API_KEY"]
 
 MAX_PROOF_COUNT = int(os.getenv("MAX_PROOF_COUNT", "3"))
 CLAIM_VERIFICATION_SKILL_URL = os.getenv(
@@ -121,11 +120,16 @@ def create_proof_docs(proofs: list, claim_name: str, claim_uri_digest: str):
         print(f"Created proof document: {file_path}")
 
 def main():
+    auth_token = helper.get_jwt_token(API_BASE_URL, helper.CLIENT_ID)
+    if auth_token is None:
+        print(f"Error: failed to fetch api auth token", file=sys.stderr)
+        sys.exit(1)
+
     proofs_dir = os.path.join(os.path.dirname(__file__), "..", "proofs")
     proofs_dir = os.path.abspath(proofs_dir)
     all_proof_docs = get_proof_docs(proofs_dir)
 
-    all_claims = helper.get_claims(API_KEY, API_BASE_URL)    
+    all_claims = helper.get_claims(auth_token, API_BASE_URL)    
     if all_claims is None:
         print("Error: failed to fetch all claims", file=sys.stderr)
         sys.exit(1)
@@ -138,7 +142,7 @@ def main():
         sys.exit(1)
     
     for claim in all_claims:
-        if helper.is_claim_validated(API_KEY, API_BASE_URL, claim, MAX_PROOF_COUNT):
+        if helper.is_claim_validated(auth_token, API_BASE_URL, claim, MAX_PROOF_COUNT):
             print(f"max proofs already ingested for claim {claim['uri']}, skipping...")
             continue
 

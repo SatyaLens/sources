@@ -12,10 +12,10 @@ import helper
 
 # Shared utilities (try package import first, fallback to local module)
 try:
-    from scripts.common import load_oapi, load_doc
+    from scripts.helper import load_oapi, load_doc
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
-    from common import load_oapi, load_doc
+    from helper import load_oapi, load_doc
 
 # Use jsonschema's Draft202012Validator for validation
 from jsonschema import Draft202012Validator
@@ -60,14 +60,12 @@ def _parse_validate_rules(s: str) -> list[str]:
         return list(s)
     return []
 
-def claim_proof_same_source(proof: dict) -> bool:
+def claim_proof_same_source(auth_token: str, api_base_url: str, proof: dict) -> bool:
     """Return True when a proof and its claim come from the same host."""
     claim_uri_digest = proof["claimUriDigest"]
     proof_uri = proof["uri"]
-    api_base_url = os.environ["API_BASE_URL"].rstrip("/")
-    api_key = os.environ["API_KEY"]
 
-    claim = helper.get_claim_by_digest(api_key, api_base_url, claim_uri_digest)
+    claim = helper.get_claim_by_digest(auth_token, api_base_url, claim_uri_digest)
     if not claim or not claim.get("uri"):
         print(f"failed to fetch claim for digest: {claim_uri_digest}")
         return False
@@ -156,6 +154,12 @@ def main() -> int:
 
     _info("Validation run: %d file(s) to check", len(files))
 
+    api_base_url = os.environ["API_BASE_URL"].rstrip("/")
+    auth_token = helper.get_jwt_token(api_base_url, helper.CLIENT_ID)
+    if auth_token is None:
+        print(f"Error: failed to fetch api auth token", file=sys.stderr)
+        sys.exit(1)
+
     for f in files:
         f = f.strip()
         if not f:
@@ -204,7 +208,7 @@ def main() -> int:
         extra_errors = run_extra_validations(data, schema)
         if extra_errors:
             errors.extend(extra_errors)
-        if folder == "proofs" and not errors and claim_proof_same_source(data):
+        if folder == "proofs" and not errors and claim_proof_same_source(auth_token, api_base_url, data):
             errors.append("uri: proof and claim must not share the same host domain")
 
         if errors:

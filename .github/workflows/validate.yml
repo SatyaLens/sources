@@ -13,7 +13,6 @@ on:
 jobs:
   validate:
     env:
-      API_KEY: ${{ secrets.API_KEY }}
       API_BASE_URL: ${{ vars.API_BASE_URL }}
     runs-on: ubuntu-latest
     steps:

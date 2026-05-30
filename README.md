@@ -15,7 +15,7 @@ This repository stores structured request documents (organized into `sources/`, 
 ## Workflows
 
 - PR Validation: A GitHub Actions workflow runs on pull requests (to `main`) and executes `python scripts/validate.py` to validate any new documents in the tracked folders. This ensures added documents conform to the schemas in `oapi.yaml` before merge.
-- Post-on-merge: After a PR is merged to `main`, another workflow runs `python scripts/post_requests.py` and POSTs newly added files to configured API endpoints. The POST script expects `API_BASE_URL` and `API_KEY` environment variables and receives the list of added files via the `ADDED_FILES` environment variable.
+- Post-on-merge: After a PR is merged to `main`, another workflow runs `python scripts/post_requests.py` and POSTs newly added files to configured API endpoints. The POST script expects the `API_BASE_URL` environment variable and receives the list of added files via the `ADDED_FILES` environment variable; the script fetches a short-lived JWT from `${API_BASE_URL}/auth/token` and uses it for Authorization.
 - Verify Claims and Source Scores: A dedicated workflow (scheduled or on-demand) verifies claims in `claims/` and computes or updates source scores. The canonical verification and scoring logic is maintained in the `source-score` project (see note below).
 
 See `scripts/validate.py` and `scripts/post_requests.py` for exact behavior and failure modes.
@@ -44,7 +44,7 @@ python scripts/validate.py path/to/your-file.yaml
 4. Open a PR that only *adds* new files (per repo rules). The CI validation workflow will run automatically.
 5. After merge, the post-merge workflow will run `scripts/post_requests.py` for any newly added tracked files and attempt to POST them to the configured API.
 
-Notes about `post_requests.py`: it requires `API_BASE_URL` and `API_KEY` to be set in the environment (CI supplies these as a variable and secret respectively). Locally you can run the script with those env vars, but be careful with credentials.
+Notes about `post_requests.py`: it requires `API_BASE_URL` to be set in the environment (CI supplies this as a repository variable). The script will fetch a short-lived JWT from `${API_BASE_URL}/auth/token` and use it as the `Authorization: Bearer <token>` header when posting documents. Locally you can run the script with `API_BASE_URL` set; no API key secret is required for the POST step.
 
 ## Important note — First iteration
 
