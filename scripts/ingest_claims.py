@@ -11,7 +11,6 @@ import newsdata_io
 import openrouter
 
 API_BASE_URL = os.environ["API_BASE_URL"]
-API_KEY = os.environ["API_KEY"]
 
 FALSIFIABLE_CLAIM_SKILL_URL = os.getenv(
     "FALSIFIABLE_CLAIM_SKILL_URL",
@@ -117,11 +116,16 @@ def create_claim_docs(claims: list, srcName: str):
         print(f"Created claim document: {file_path}")
 
 def main():
+    auth_token = helper.get_jwt_token(API_BASE_URL, helper.CLIENT_ID)
+    if auth_token is None:
+        print(f"Error: failed to fetch api auth token", file=sys.stderr)
+        sys.exit(1)
+
     claims_dir = os.path.join(os.path.dirname(__file__), "..", "claims")
     claims_dir = os.path.abspath(claims_dir)
     all_claim_docs = get_claim_docs(claims_dir)
 
-    sources = helper.get_sources(API_KEY, API_BASE_URL)
+    sources = helper.get_sources(auth_token, API_BASE_URL)
     if sources is None:
         print(f"Error: failed to fetch all sources", file=sys.stderr)
         sys.exit(1)
@@ -138,7 +142,7 @@ def main():
         if source["domainUrlNewsData"] != "":
             domain_url = source["domainUrlNewsData"]
         else:
-            helper.patch_sources(API_KEY, API_BASE_URL, source["uriDigest"], {"domainUrlNewsData": domain_url})
+            helper.patch_sources(auth_token, API_BASE_URL, source["uriDigest"], {"domainUrlNewsData": domain_url})
             
         claims = newsdata_io.get_claims(domain_url)
         if claims is None or len(claims) == 0:

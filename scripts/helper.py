@@ -148,9 +148,9 @@ def get_proofs_by_claim(auth_token: str, base_url: str, claim_uri_digest: str) -
         return []
     return response.json()
 
-def is_claim_validated(api_key: str, base_url: str, claim: dict, proof_count: int) -> bool:
+def is_claim_validated(auth_token: str, base_url: str, claim: dict, proof_count: int) -> bool:
     if claim.get("checked"):
-        claim_proofs = get_proofs_by_claim(api_key, base_url, claim["uriDigest"])
+        claim_proofs = get_proofs_by_claim(auth_token, base_url, claim["uriDigest"])
         if len(claim_proofs) >= proof_count:
             return True
     return False

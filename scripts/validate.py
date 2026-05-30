@@ -65,9 +65,13 @@ def claim_proof_same_source(proof: dict) -> bool:
     claim_uri_digest = proof["claimUriDigest"]
     proof_uri = proof["uri"]
     api_base_url = os.environ["API_BASE_URL"].rstrip("/")
-    api_key = os.environ["API_KEY"]
 
-    claim = helper.get_claim_by_digest(api_key, api_base_url, claim_uri_digest)
+    auth_token = helper.get_jwt_token(api_base_url, helper.CLIENT_ID)
+    if auth_token is None:
+        print(f"Error: failed to fetch api auth token", file=sys.stderr)
+        sys.exit(1)
+
+    claim = helper.get_claim_by_digest(auth_token, api_base_url, claim_uri_digest)
     if not claim or not claim.get("uri"):
         print(f"failed to fetch claim for digest: {claim_uri_digest}")
         return False

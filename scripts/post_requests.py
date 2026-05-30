@@ -3,7 +3,6 @@
 
 Requires environment variables:
     API_BASE_URL    API server base URL
-    API_KEY         API token for authentication
 """
 
 import json
@@ -16,10 +15,10 @@ import traceback
 
 # Shared utilities (try package import first, fallback to local module)
 try:
-    from scripts.helper import load_oapi, load_doc, CLIENT_ID
+    from scripts.helper import load_oapi, load_doc, CLIENT_ID, get_jwt_token
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
-    from helper import load_oapi, load_doc, CLIENT_ID
+    from helper import load_oapi, load_doc, CLIENT_ID, get_jwt_token
 
 # folder -> schema name
 SCHEMA_MAP = {
@@ -78,14 +77,14 @@ def main() -> int:
         traceback.print_exc(file=sys.stderr)
 
     base_url = os.environ.get("API_BASE_URL", "").rstrip("/")
-    api_key = os.environ.get("API_KEY", "")
-
     if not base_url:
         _error("API_BASE_URL environment variable is not set")
         return 1
-    if not api_key:
-        _error("API_KEY environment variable is not set")
-        return 1
+    
+    auth_token = get_jwt_token(base_url, CLIENT_ID)
+    if auth_token is None:
+        print(f"Error: failed to fetch api auth token", file=sys.stderr)
+        sys.exit(1)
 
     files = [f for f in os.environ.get("ADDED_FILES", "").splitlines() if f.strip()]
     if not files:
@@ -151,7 +150,7 @@ def main() -> int:
 
         _info("Posting %s -> %s", str(norm_path), url)
         try:
-            status, body = post(url, data, api_key)
+            status, body = post(url, data, auth_token)
         except Exception as e:
             _exception("%s: Request failed: %s", str(norm_path), e)
             failed = True
